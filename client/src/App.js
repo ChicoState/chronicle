@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
+import axios from 'axios';
 import './App.css';
 
 const App = () => {
@@ -11,91 +12,88 @@ const App = () => {
   const [issueData, setIssueData] = useState([]);
   const [pullRequestData, setPullRequestData] = useState([]);
   const [codeReviewData, setCodeReviewData] = useState([]);
-  const [commentData, setCommentData] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  async function fetchCommits(repoName) {
-    // Get commit data for a specific repository
-    await fetch(`https://api.github.com/repos/ChicoState/PantryNode/commits`)
-      .then((res) => res.json())
-      .then(
-        (result) => {
-          setCommitData(result);
-        },
-        (error) => {
-          console.log(error);
-        }
-      );
-  }
+  const fetchCommits = async (repoName) => {
+    try {
+      const response = await axios.get(`https://api.github.com/repos/ChicoState/PantryNode/commits`);
+      setCommitData(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-  async function fetchIssues(repoName) {
-    // Get issue data for a specific repository
-    await fetch(`https://api.github.com/repos/ChicoState/PantryNode/issues`)
-      .then((res) => res.json())
-      .then(
-        (result) => {
-          setIssueData(result);
-        },
-        (error) => {
-          console.log(error);
-        }
-      );
-  }
+  const fetchIssues = async (repoName) => {
+    try {
+      const response = await axios.get(`https://api.github.com/repos/ChicoState/PantryNode/issues`);
+      setIssueData(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-  async function fetchPullRequests(repoName) {
-    // Get pull request data for a specific repository
-    await fetch(`https://api.github.com/repos/ChicoState/PantryNode/pulls`)
-      .then((res) => res.json())
-      .then(
-        (result) => {
-          setPullRequestData(result);
-        },
-        (error) => {
-          console.log(error);
-        }
-      );
-  }
+  const fetchPullRequests = async (repoName) => {
+    try {
+      const response = await axios.get(`https://api.github.com/repos/ChicoState/PantryNode/pulls`);
+      setPullRequestData(response.data);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-  async function fetchRepoData() {
-    // Get repo data about the GitHub user
-    await fetch(`https://api.github.com/users/ChicoState`)
-      .then((res) => res.json())
-      .then(
-        (result) => {
-          setAvatarURL(result.avatar_url);
-          setGitHubUsername(result.login);
+  const fetchRepoData = async (page = 1) => {
+    try {
+      const userDataResponse = await axios.get(`https://api.github.com/users/ChicoState`);
+      setAvatarURL(userDataResponse.data.avatar_url);
+      setGitHubUsername(userDataResponse.data.login);
+  
+      const reposResponse = await axios.get(`https://api.github.com/users/ChicoState/repos`, {
+        params: {
+          page: page,
+          per_page: 279, // Set the number of items per page (max is 100)
         },
-        (error) => {
-          console.log(error);
-        }
-      );
+      });
+  
+      const list = reposResponse.data.map((item) => item.name);
+      setRepoData(list);
+  
+      // Extract pagination information from headers
+      const linkHeader = reposResponse.headers.link;
+      const totalPagesMatch = linkHeader && linkHeader.match(/&page=(\d+)>; rel="last"/);
+      const totalPages = totalPagesMatch ? parseInt(totalPagesMatch[1]) : 1;
+      setTotalPages(totalPages);
+  
+      // Fetch next page if there are more pages
+      if (page < totalPages) {
+        await fetchRepoData(page + 1);
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
-    // Get the list of public repositories
-    await fetch(`https://api.github.com/users/ChicoState/repos`)
-      .then((res) => res.json())
-      .then(
-        (result) => {
-          const list = result.map((item) => item.name);
-          setRepoData(list);
-        },
-        (error) => {
-          console.log(error);
-        }
-      );
-  }
+  const handlePagination = (direction) => {
+    if (direction === 'next' && currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    } else if (direction === 'prev' && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   useEffect(() => {
-    // Fetch GitHub user data when the component mounts
-    fetchRepoData();
-  }, []);
+    // Fetch GitHub user data with pagination when the component mounts
+    fetchRepoData(currentPage);
+  }, [currentPage]);
 
   return (
     <div className="App w-100 min-vh-100 justify-content-center align-items-center d-flex flex-column">
-    <Card className="Card">
-      <Card.Img variant="top" src={avatarURL} />
-      <Card.Body>
-        <Card.Title>{githubUsername}</Card.Title>
-      </Card.Body>
-    </Card>
+      <Card className="Card">
+        <Card.Img variant="top" src={avatarURL} />
+        <Card.Body>
+          <Card.Title>{githubUsername}</Card.Title>
+        </Card.Body>
+      </Card>
 
       <div>
         {repoData.map((repoName, index) => (
@@ -120,7 +118,7 @@ const App = () => {
       <div>
         <h2>Commit Messages:</h2>
         <ul>
-        {commitData.map((commit, index) => (
+          {commitData.map((commit, index) => (
             <li key={index}>
               Date/Time: {commit.commit.author.date}<br />
               Author: {commit.commit.author.name}<br />
@@ -163,23 +161,17 @@ const App = () => {
           ))}
         </ul>
       </div>
+      {/* Pagination controls */}
       <div>
-        <h2>Code Reviews:</h2>
-        <ul>
-          {codeReviewData.map((review, index) => (
-            <li key={index}>
-              Date/Time Submitted: {review.submitted_at}<br />
-              Associated PR ID #: {review.pull_request_url.split("/").pop()}<br />
-              Reviewer: {review.user.login}<br />
-              Status: {review.state}<br />
-              Description: {review.body}<br />
-            </li>
-          ))}
-        </ul>
+        <Button variant="secondary" onClick={() => handlePagination('prev')} disabled={currentPage === 1}>
+          Previous Page
+        </Button>{' '}
+        <Button variant="secondary" onClick={() => handlePagination('next')} disabled={currentPage === totalPages}>
+          Next Page
+        </Button>
       </div>
     </div>
   );
 }
 
 export default App;
-
