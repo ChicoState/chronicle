@@ -17,7 +17,7 @@ const GitHubDetails = ({ username, repoName }) => {
 
   const fetchCommits = async (page = 1) => {
     try {
-      const response = await axios.get(`https://api.github.com/repos/${username}/${repoName}/commits`, {
+      const response = await axios.get(`https://api.github.com/repos/${username}/${repoName}/commits?sha=frontend`, {
         params: {
           page: page,
           per_page: 10,

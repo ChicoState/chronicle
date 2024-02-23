@@ -1,5 +1,6 @@
 import React from "react";
 import GitHubRepos from "./components/GitHubRepos";
+import './App.css';
 
 const App = () => {
   return (
