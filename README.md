@@ -10,7 +10,7 @@
 2. once you click on any repo. All the Commits, PRs, Issues, Reviews and comments will be displayed below the repos list.
 3. Each datalist is paginated with 10 details/page.
 
-<!--
+%
 The below code is what I used for testing the api's without exceeding ratelimit set by the GitHub on it's apis:
 
 In this code we can put in the github account name and the repo name manually on each api to test them.
@@ -200,4 +200,4 @@ const App = () => {
 }
 
 export default App;
--->
+%
