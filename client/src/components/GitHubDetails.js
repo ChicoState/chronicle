@@ -14,7 +14,115 @@ const GitHubDetails = ({ username, repoName }) => {
   const [pullRequestPage, setPullRequestPage] = useState(1);
   const [codeReviewPage, setCodeReviewPage] = useState(1);
   const [commentPage, setCommentPage] = useState(1);
-
+  
+    // Function to convert data to CSV format
+    const exportCSV = async (page) => {
+      try {
+        // Fetch all data for each type of activity
+        await fetchCommits();
+        await fetchIssues();
+        await fetchPullRequests();
+        await fetchCodeReviews();
+        await fetchComments();
+    
+        // Combine all data arrays into one array with an additional "Action" column
+        const allData = [
+          ...commitData.map(data => ({ ...data, Action: 'Commit' })),
+          ...issueData.map(data => ({ ...data, Action: 'Issue' })),
+          ...pullRequestData.map(data => ({ ...data, Action: 'Pull Request' })),
+          ...codeReviewData.map(data => ({ ...data, Action: 'Code Review' })),
+          ...commentData.map(data => ({ ...data, Action: 'Comment' }))
+        ];
+    
+        // Create CSV content
+        let csvContent = "Repository,Timestamp,Action,Author,ID,Additions,Deletions,Message,Description,Assignees,Close_date,Closed_by,Request_Status,Reviewers,Review_Recommendation,Tagged\n";
+    
+        // Append data rows
+        allData.forEach(data => {
+          // Construct each row of CSV data
+          // ...
+          let timestamp = 'NA';
+          let assigneesStr = 'NA';
+          let reviewersStr = 'NA';
+          let author = 'NA';
+          let repoID = 'NA';
+          let message='NA';
+          let description='NA';
+          let close_date='NA';
+          let closed_by='NA';
+          let status='NA';
+          // Determine the appropriate fields based on the action
+          switch (data.Action) {
+            case 'Commit':
+              timestamp = data.commit.author.date;
+              author = data.commit.author.name;
+              repoID = data.repoID;
+              if (Array.isArray(data.assignees) && data.assignees.length > 0) {
+                assigneesStr = data.assignees.map(assignee => assignee.name || 'NA').join(';');
+              }
+              message=data.commit.message;
+              break;
+            case 'Issue':
+              timestamp = data.created_at;
+              author = data.user.login;
+              repoID = data.number;
+              if (Array.isArray(data.assignees) && data.assignees.length > 0) {
+                assigneesStr = data.assignees.map(assignee => assignee.login || 'NA').join(';');
+              }
+              description=data.title;
+              close_date=data.closed_at||'NA';
+              closed_by=data.closed_by ? data.closed_by.login : "Not Closed"
+              break;
+            case 'Pull Request':
+              timestamp = data.created_at;
+              author = data.user.login;
+              repoID = data.number;
+              if (Array.isArray(data.requested_reviewers) && data.requested_reviewers.length > 0) {
+                reviewersStr = data.requested_reviewers.map(reviewer => reviewer.login || 'NA').join(';');
+              }
+              close_date=data.closed_at;
+              status=data.state;
+              break;
+            case 'Code Review':
+              timestamp = data.created_at;
+              author = data.user.login;
+              repoID = data.pull_request_url.split('/').pop();
+              // Add logic to retrieve reviewers' information from code review data
+              if (data.user && data.user.login) {
+                reviewersStr = data.user.login;
+              }
+              description=data.body;
+              status=data.state;
+              break;
+            case 'Comment':
+              timestamp = data.created_at;
+              author = data.user.login;
+              repoID = data.id;
+              message=data.body;
+              // Add logic to extract assignees/reviewers if applicable
+              break;
+            default:
+              break;
+          }
+          message = message ? `"${message.replace(/"/g, '""').replace(/\n/g, '\\n')}"` : 'NA';
+          description = description ? `"${description.replace(/"/g, '""').replace(/\n/g, '\\n')}"` : 'NA';
+          csvContent += `${repoName},${timestamp},${data.Action},${author},${repoID},${data.additions || 'NA'},${data.deletions || 'NA'},${message || 'NA'},${description || 'NA'},${assigneesStr},${close_date || 'NA'},${closed_by || 'NA'},${status|| 'NA'},${reviewersStr},${data.reviewRecommendation || 'NA'},${data.tagged || 'NA'}\n`;
+        });
+    
+        // Create Blob and download CSV file
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${repoName}_${page}_data.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (error) {
+        console.error(error);
+      }
+    };
+    
   const fetchCommits = async (page = 1) => {
     try {
       const response = await axios.get(`https://api.github.com/repos/${username}/${repoName}/commits?sha=frontend`, {
@@ -114,6 +222,7 @@ const GitHubDetails = ({ username, repoName }) => {
       default:
         break;
     }
+    
   };
 
   return (
@@ -238,9 +347,9 @@ const GitHubDetails = ({ username, repoName }) => {
     Next Page
   </Button>
 </div>
-
+<Button variant="success" onClick={() => exportCSV(commitPage)}>Export to CSV</Button>
 </div>
 );
-}
+  }
 
 export default GitHubDetails;
