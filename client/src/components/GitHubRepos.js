@@ -12,6 +12,10 @@ const GitHubRepos = ({ username }) => {
   const [totalPages, setTotalPages] = useState(1);
   const [selectedRepo, setSelectedRepo] = useState(null);
 
+  
+  
+  
+
   const fetchRepoData = async (page = 1) => {
     try {
       const userDataResponse = await axios.get(`https://api.github.com/users/${username}`);
@@ -23,7 +27,7 @@ const GitHubRepos = ({ username }) => {
       const reposResponse = await axios.get(`https://api.github.com/users/${username}/repos`, {
         params: {
           page: page,
-          per_page: 10,
+          per_page: 100,
         },
       });
 
@@ -38,6 +42,7 @@ const GitHubRepos = ({ username }) => {
       console.error(error);
     }
   };
+  
 
   const handlePagination = (direction) => {
     if (direction === 'next' && currentPage < totalPages) {
@@ -83,7 +88,6 @@ const GitHubRepos = ({ username }) => {
           Next Page
         </Button>
       </div>
-
       {/* Display GitHubDetails if a repo is selected */}
       {selectedRepo && (
         <GitHubDetails username={username} repoName={selectedRepo} />
