@@ -3,7 +3,9 @@ import React, { useEffect, useState } from "react";
 import axios from 'axios';
 import Button from 'react-bootstrap/Button';
 
+
 const GitHubDetails = ({ username, repoName }) => {
+  
   const [commitData, setCommitData] = useState([]);
   const [issueData, setIssueData] = useState([]);
   const [pullRequestData, setPullRequestData] = useState([]);
