@@ -11,6 +11,7 @@ const GitHubRepos = () => {
   const [username, setUsername] = useState('');
   const [repoName, setRepoName] = useState('');
   const [repoData, setRepoData] = useState(null);
+  const [error, setError] = useState('');
   
   const fetchRepoData = async () => {
     try {
@@ -18,11 +19,14 @@ const GitHubRepos = () => {
       setRepoData(repoResponse.data);
     } catch (error) {
       console.error(error);
+      setError('Repository not found.'); // Set error message for incorrect username or repository name
+      setRepoData(null);
       setRepoData(null);
     }
   };
 
   const handleRepoSearch = async () => {
+    setError('');
     await fetchRepoData();
   };
 
@@ -44,7 +48,9 @@ const GitHubRepos = () => {
         <input type="text" placeholder="Enter repository name" value={repoName} onChange={(e) => setRepoName(e.target.value)} />
         <Button variant="primary" onClick={handleRepoSearch}>Search</Button>
       </div>
-
+      {error && (
+        <div style={{ color: 'red' }}>{error}</div>
+      )}
       {/* Display repo data if available */}
       {repoData && (
         <div>
