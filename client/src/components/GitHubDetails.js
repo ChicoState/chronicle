@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Pagination, Button } from 'react-bootstrap';
 
-const GitHubDetails = ({ username, repoName, issues, pullRequests, commits }) => {
+const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, codeReviews, comments }) => {
   const [activeTab, setActiveTab] = useState('issues');
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -17,7 +17,11 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits }) =>
   };
 
   const handleNextPage = () => {
-    const totalPageCount = Math.ceil(issues.length / itemsPerPage);
+    const totalPageCount = Math.ceil(activeTab === 'issues' ? issues.length / itemsPerPage :
+                                      activeTab === 'pullRequests' ? pullRequests.length / itemsPerPage :
+                                      activeTab === 'commits' ? commits.length / itemsPerPage :
+                                      activeTab === 'codeReviews' ? codeReviews.length / itemsPerPage :
+                                      comments.length / itemsPerPage);
     if (currentPage < totalPageCount) {
       setCurrentPage(currentPage + 1);
     }
@@ -42,7 +46,6 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits }) =>
     );
   };
 
-  // Render functions for issues, pull requests, and commits remain the same
   const renderCommits = (commits) => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedCommits = commits.slice(startIndex, startIndex + itemsPerPage);
@@ -51,7 +54,6 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits }) =>
         <h5>Commit Message: {commit.commit.message}</h5>
         <p>Author: {commit.commit.author.name} ({commit.commit.author.email})</p>
         <p>Date: {new Date(commit.commit.author.date).toLocaleString()}</p>
-
       </div>
     ));
   };
@@ -90,6 +92,32 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits }) =>
     ));
   };
 
+  const renderCodeReviews = (codeReviews) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedCodeReviews = codeReviews.slice(startIndex, startIndex + itemsPerPage);
+    return paginatedCodeReviews.map((review, index) => (
+      <div key={index} style={{ marginBottom: '20px' }}>
+        <h5>Date/Time Submitted: {new Date(review.submitted_at).toLocaleString()}</h5>
+        <p>ID #: {review.pull_request_url.split('/').pop()}</p>
+        <p>Reviewer: {review.user.login}</p>
+        <p>Status: {review.state}</p>
+        <p>Description: {review.body}</p>
+      </div>
+    ));
+  };
+
+  const renderComments = (comments) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedComments = comments.slice(startIndex, startIndex + itemsPerPage);
+    return paginatedComments.map((comment, index) => (
+      <div key={index} style={{ marginBottom: '20px' }}>
+        <h5>Comment by: {comment.user.login}</h5>
+        <p>Date: {new Date(comment.created_at).toLocaleString()}</p>
+        <p>Body: {comment.body}</p>
+      </div>
+    ));
+  };
+
   return (
     <div>
       <h2>{`${username}/${repoName} Details`}</h2>
@@ -97,6 +125,8 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits }) =>
         <Button variant="link" onClick={() => setActiveTab('issues')}>Issues</Button>
         <Button variant="link" onClick={() => setActiveTab('pullRequests')}>Pull Requests</Button>
         <Button variant="link" onClick={() => setActiveTab('commits')}>Commits</Button>
+        <Button variant="link" onClick={() => setActiveTab('codeReviews')}>Code Reviews</Button>
+        <Button variant="link" onClick={() => setActiveTab('comments')}>Comments</Button>
       </div>
 
       <div>
@@ -119,6 +149,20 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits }) =>
             <h3>Commits</h3>
             {renderCommits(commits)}
             {renderPagination(commits)}
+          </div>
+        )}
+        {activeTab === 'codeReviews' && (
+          <div>
+            <h3>Code Reviews</h3>
+            {renderCodeReviews(codeReviews)}
+            {renderPagination(codeReviews)}
+          </div>
+        )}
+        {activeTab === 'comments' && (
+          <div>
+            <h3>Comments</h3>
+            {renderComments(comments)}
+            {renderPagination(comments)}
           </div>
         )}
       </div>

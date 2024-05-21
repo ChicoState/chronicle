@@ -12,6 +12,8 @@ const GitHubRepos = () => {
   const [issues, setIssues] = useState([]);
   const [pullRequests, setPullRequests] = useState([]);
   const [commits, setCommits] = useState([]);
+  const [codeReviews, setCodeReviews] = useState([]);
+  const [comments, setComments] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState(null);
 
   const fetchRepoData = async () => {
@@ -22,12 +24,16 @@ const GitHubRepos = () => {
       await fetchAllIssues();
       await fetchAllPullRequests();
       await fetchAllCommits();
+      await fetchAllCodeReviews();
+      await fetchAllComments();
     } catch (error) {
       console.error(error);
       setRepoData(null);
       setIssues([]);
       setPullRequests([]);
       setCommits([]);
+      setCodeReviews([]);
+      setComments([]);
     }
   };
 
@@ -88,6 +94,44 @@ const GitHubRepos = () => {
     setCommits(allCommits);
   };
 
+  const fetchAllCodeReviews = async () => {
+    let page = 1;
+    let allCodeReviews = [];
+    let hasMore = true;
+
+    while (hasMore) {
+      const codeReviewResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls/comments`, {
+        params: { page, per_page: 100 }
+      });
+      if (codeReviewResponse.data.length > 0) {
+        allCodeReviews = allCodeReviews.concat(codeReviewResponse.data);
+        page++;
+      } else {
+        hasMore = false;
+      }
+    }
+    setCodeReviews(allCodeReviews);
+  };
+
+  const fetchAllComments = async () => {
+    let page = 1;
+    let allComments = [];
+    let hasMore = true;
+
+    while (hasMore) {
+      const commentResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues/comments`, {
+        params: { page, per_page: 100 }
+      });
+      if (commentResponse.data.length > 0) {
+        allComments = allComments.concat(commentResponse.data);
+        page++;
+      } else {
+        hasMore = false;
+      }
+    }
+    setComments(allComments);
+  };
+
   const handleRepoSearch = async () => {
     await fetchRepoData();
   };
@@ -129,7 +173,7 @@ const GitHubRepos = () => {
           <Button variant="link" onClick={() => handleRepoClick(repoData.name)}>
             View Details
           </Button>
-          <Button variant="secondary" onClick={() => handleExportData(repoName, { repoData, issues, pullRequests, commits })}>
+          <Button variant="secondary" onClick={() => handleExportData(repoName, { repoData, issues, pullRequests, commits, codeReviews, comments })}>
             Export Data
           </Button>
         </div>
@@ -142,6 +186,8 @@ const GitHubRepos = () => {
           issues={issues}
           pullRequests={pullRequests}
           commits={commits}
+          codeReviews={codeReviews}
+          comments={comments}
         />
       )}
     </div>

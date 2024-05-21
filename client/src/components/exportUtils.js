@@ -1,10 +1,11 @@
-const handleExportData = (repoName, { repoData, issues, pullRequests, commits }) => {
+const handleExportData = (repoName, { repoData, issues, pullRequests, commits, codeReviews, comments }) => {
     const csvRows = [];
 
     // Function to convert timestamp to date string
     const formatDate = (timestamp) => {
+        if (!timestamp) return 'N/A';
         const date = new Date(timestamp);
-        return date.toISOString();
+        return isNaN(date) ? 'N/A' : date.toISOString();
     };
 
     // Function to convert assignees/reviewers to string
@@ -39,15 +40,15 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits })
             "commit",
             commit.commit.author.name,
             commit.sha,
-            "",
-            "",
+            "N/A",
+            "N/A",
             `"${commit.commit.message.replace(/"/g, '""')}"`,
-            "",
-            "",
-            "",
-            "",
-            "",
-            ""
+            "N/A",
+            "N/A",
+            "N/A",
+            "N/A",
+            "N/A",
+            "N/A"
         ]);
     });
 
@@ -59,16 +60,16 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits })
             "pull_request",
             pullRequest.user.login,
             pullRequest.number,
-            "",
-            "",
+            "N/A",
+            "N/A",
             `"${pullRequest.title.replace(/"/g, '""')}"`,
             formatList(pullRequest.assignees),
             pullRequest.closed_at ? formatDate(pullRequest.closed_at) : "N/A", // Check if closed_at exists
             pullRequest.closed_by ? pullRequest.closed_by.login : "N/A", // Check if closed_by exists
             pullRequest.state,
             formatList(pullRequest.requested_reviewers),
-            "",
-            ""
+            "N/A",
+            "N/A"
         ]);
     });
 
@@ -80,16 +81,58 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits })
             "issue",
             issue.user.login,
             issue.number,
-            "",
-            "",
+            "N/A",
+            "N/A",
             `"${issue.title.replace(/"/g, '""')}"`,
             formatList(issue.assignees),
             issue.closed_at ? formatDate(issue.closed_at) : "N/A", // Check if closed_at exists
             issue.closed_by ? issue.closed_by.login : "N/A", // Check if closed_by exists
             issue.state,
-            "",
-            "",
-            ""
+            "N/A",
+            "N/A",
+            "N/A"
+        ]);
+    });
+
+    // Add code review data
+    codeReviews.forEach(review => {
+        csvRows.push([
+            repoName,
+            formatDate(review.submitted_at),
+            "code_review",
+            review.user.login,
+            review.pull_request_url.split('/').pop(),
+            "N/A",
+            "N/A",
+            `"${review.body.replace(/"/g, '""')}"`,
+            "N/A",
+            "N/A",
+            "N/A",
+            review.state ? review.state : "N/A",
+            "N/A",
+            "N/A",
+            "N/A"
+        ]);
+    });
+
+    // Add comment data
+    comments.forEach(comment => {
+        csvRows.push([
+            repoName,
+            formatDate(comment.created_at),
+            "comment",
+            comment.user.login,
+            comment.id,
+            "N/A",
+            "N/A",
+            `"${comment.body.replace(/"/g, '""')}"`,
+            "N/A",
+            "N/A",
+            "N/A",
+            "N/A",
+            "N/A",
+            "N/A",
+            "N/A"
         ]);
     });
 
