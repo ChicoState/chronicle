@@ -47,7 +47,9 @@ const GitHubRepos = () => {
         params: { page, per_page: 100 }
       });
       if (issuesResponse.data.length > 0) {
-        allIssues = allIssues.concat(issuesResponse.data);
+        // Filter out pull requests
+        const issuesOnly = issuesResponse.data.filter(issue => !issue.pull_request);
+        allIssues = allIssues.concat(issuesOnly);
         page++;
       } else {
         hasMore = false;
