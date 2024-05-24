@@ -44,7 +44,7 @@ const GitHubRepos = () => {
 
     while (hasMore) {
       const issuesResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues`, {
-        params: { page, per_page: 100 }
+        params: { page, per_page: 100, state: "all" }
       });
       if (issuesResponse.data.length > 0) {
         // Filter out pull requests
@@ -65,7 +65,7 @@ const GitHubRepos = () => {
 
     while (hasMore) {
       const pullRequestsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls`, {
-        params: { page, per_page: 100 }
+        params: { page, per_page: 100, state: "all" }
       });
       if (pullRequestsResponse.data.length > 0) {
         allPullRequests = allPullRequests.concat(pullRequestsResponse.data);
