@@ -23,6 +23,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
         "Additions",
         "Deletions",
         "Message",
+        "Description",
         "Assignees",
         "Close_date",
         "Closed_by",
@@ -38,7 +39,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             repoName,
             formatDate(commit.commit.author.date),
             "commit",
-            commit.commit.author.name,
+            commit.author.login,
             commit.sha,
             "N/A",
             "N/A",
@@ -63,11 +64,11 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             "N/A",
             "N/A",
             `"${pullRequest.title.replace(/"/g, '""')}"`,
-            formatList(pullRequest.assignees),
+            formatList(pullRequest.assignees) ? formatList(pullRequest.assignees) : "N/A",
             pullRequest.closed_at ? formatDate(pullRequest.closed_at) : "N/A", // Check if closed_at exists
             pullRequest.closed_by ? pullRequest.closed_by.login : "N/A", // Check if closed_by exists
-            pullRequest.state,
-            formatList(pullRequest.requested_reviewers),
+            pullRequest.state ? pullRequest.state : "N/A",
+            formatList(pullRequest.requested_reviewers) ? formatList(pullRequest.requested_reviewers) : "N/A",
             "N/A",
             "N/A"
         ]);
@@ -84,7 +85,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             "N/A",
             "N/A",
             `"${issue.title.replace(/"/g, '""')}"`,
-            formatList(issue.assignees),
+            formatList(issue.assignees) ? formatList(issue.assignees) : "N/A",
             issue.closed_at ? formatDate(issue.closed_at) : "N/A", // Check if closed_at exists
             issue.closed_by ? issue.closed_by.login : "N/A", // Check if closed_by exists
             issue.state,
@@ -98,7 +99,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
     codeReviews.forEach(review => {
         csvRows.push([
             repoName,
-            formatDate(review.submitted_at),
+            formatDate(review.created_at),
             "code_review",
             review.user.login,
             review.pull_request_url.split('/').pop(),

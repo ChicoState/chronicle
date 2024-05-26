@@ -52,7 +52,7 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, code
     return paginatedCommits.map((commit, index) => (
       <div key={index} style={{ marginBottom: '20px' }}>
         <h5>Commit Message: {commit.commit.message}</h5>
-        <p>Author: {commit.commit.author.name} ({commit.commit.author.email})</p>
+        <p>Author: {commit.author.login} ({commit.commit.author.email})</p>
         <p>Date: {new Date(commit.commit.author.date).toLocaleString()}</p>
       </div>
     ));
@@ -93,11 +93,12 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, code
   };
 
   const renderCodeReviews = (codeReviews) => {
+    console.log("Code Reviews:", codeReviews);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const paginatedCodeReviews = codeReviews.slice(startIndex, startIndex + itemsPerPage);
     return paginatedCodeReviews.map((review, index) => (
       <div key={index} style={{ marginBottom: '20px' }}>
-        <h5>Date/Time Submitted: {new Date(review.submitted_at).toLocaleString()}</h5>
+        <h5>Date/Time Submitted: {new Date(review.created_at).toLocaleString()}</h5>
         <p>ID #: {review.pull_request_url.split('/').pop()}</p>
         <p>Reviewer: {review.user.login}</p>
         <p>Status: {review.state}</p>
