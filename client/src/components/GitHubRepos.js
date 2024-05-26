@@ -6,7 +6,7 @@ import GitHubDetails from "./GitHubDetails";
 import handleExportData from "./exportUtils";
 
 const GitHubRepos = () => {
-  const [username, setUsername] = useState('');
+  const [loginName, setLoginName] = useState('');
   const [repoName, setRepoName] = useState('');
   const [repoData, setRepoData] = useState(null);
   const [issues, setIssues] = useState([]);
@@ -18,7 +18,10 @@ const GitHubRepos = () => {
 
   const fetchRepoData = async () => {
     try {
-      const repoResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}`);
+      const repoResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}`);
+      console.log("Repo Response:", repoResponse.data);
+      const contResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/contributors`);
+      console.log("Repo Response:", contResponse.data);
       setRepoData(repoResponse.data);
 
       await fetchAllIssues();
@@ -43,7 +46,7 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const issuesResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues`, {
+      const issuesResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/issues`, {
         params: { page, per_page: 100, state: "all" }
       });
       if (issuesResponse.data.length > 0) {
@@ -64,7 +67,7 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const pullRequestsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls`, {
+      const pullRequestsResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/pulls`, {
         params: { page, per_page: 100, state: "all" }
       });
       if (pullRequestsResponse.data.length > 0) {
@@ -83,11 +86,18 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const commitsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/commits`, {
+      const commitsResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/commits`, {
         params: { page, per_page: 100 }
       });
       if (commitsResponse.data.length > 0) {
-        allCommits = allCommits.concat(commitsResponse.data);
+        // Check for each commit author and try to link to GitHub user
+        const mappedCommits = commitsResponse.data.map(commit => {
+          if (!commit.author) {
+            commit.author = { login: commit.commit.author.name }; // Fallback to commit author's name if author is null
+          }
+          return commit;
+        });
+        allCommits = allCommits.concat(mappedCommits);
         page++;
       } else {
         hasMore = false;
@@ -102,7 +112,7 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const codeReviewResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls/comments`, {
+      const codeReviewResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/pulls/comments`, {
         params: { page, per_page: 100 }
       });
       if (codeReviewResponse.data.length > 0) {
@@ -121,7 +131,7 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const commentResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues/comments`, {
+      const commentResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/issues/comments`, {
         params: { page, per_page: 100 }
       });
       if (commentResponse.data.length > 0) {
@@ -153,9 +163,9 @@ const GitHubRepos = () => {
       <div>
         <input
           type="text"
-          placeholder="Enter GitHub username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Enter GitHub login name"
+          value={loginName}
+          onChange={(e) => setLoginName(e.target.value)}
         />
         <input
           type="text"
@@ -183,7 +193,7 @@ const GitHubRepos = () => {
 
       {selectedRepo && (
         <GitHubDetails
-          username={username}
+          username={loginName}
           repoName={selectedRepo}
           issues={issues}
           pullRequests={pullRequests}
