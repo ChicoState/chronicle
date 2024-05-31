@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import axios from 'axios';
@@ -15,6 +15,13 @@ const GitHubRepos = () => {
   const [codeReviews, setCodeReviews] = useState([]);
   const [comments, setComments] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState(null);
+  const [isRepoFetched, setIsRepoFetched] = useState(false);
+
+  useEffect(() => {
+    if (username && repoName) {
+      fetchRepoData();
+    }
+  }, [username, repoName]);
 
   const fetchRepoData = async () => {
     try {
@@ -24,8 +31,10 @@ const GitHubRepos = () => {
       await fetchAllIssues();
       await fetchAllPullRequests();
       await fetchAllCommits();
-      await fetchAllCodeReviews();
       await fetchAllComments();
+      await fetchAllCodeReviews();
+      
+      setIsRepoFetched(true); // Set visibility state to true after successful fetch
     } catch (error) {
       console.error(error);
       setRepoData(null);
@@ -34,6 +43,8 @@ const GitHubRepos = () => {
       setCommits([]);
       setCodeReviews([]);
       setComments([]);
+      
+      setIsRepoFetched(false); // Set visibility state to false on error
     }
   };
 
@@ -97,22 +108,22 @@ const GitHubRepos = () => {
   };
 
   const fetchAllCodeReviews = async () => {
-    let page = 1;
-    let allCodeReviews = [];
-    let hasMore = true;
-
-    while (hasMore) {
-      const codeReviewResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls/comments`, {
-        params: { page, per_page: 100 }
-      });
-      if (codeReviewResponse.data.length > 0) {
-        allCodeReviews = allCodeReviews.concat(codeReviewResponse.data);
-        page++;
-      } else {
-        hasMore = false;
-      }
+    const allReviews = [];
+    for (const pr of pullRequests) {
+      const reviews = await fetchCodeReviewsForPR(pr.number);
+      allReviews.push(...reviews);
     }
-    setCodeReviews(allCodeReviews);
+    setCodeReviews(allReviews);
+  };
+
+  const fetchCodeReviewsForPR = async (prNumber) => {
+    try {
+      const codeReviewsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls/${prNumber}/reviews`);
+      return codeReviewsResponse.data;
+    } catch (error) {
+      console.error(`Error fetching code reviews for PR ${prNumber}:`, error);
+      return [];
+    }
   };
 
   const fetchAllComments = async () => {
@@ -172,12 +183,16 @@ const GitHubRepos = () => {
         <div>
           <h2>{repoData.full_name}</h2>
           <p>{repoData.description}</p>
-          <Button variant="link" onClick={() => handleRepoClick(repoData.name)}>
-            View Details
-          </Button>
-          <Button variant="secondary" onClick={() => handleExportData(repoName, { repoData, issues, pullRequests, commits, codeReviews, comments })}>
-            Export Data
-          </Button>
+          {isRepoFetched && (
+            <>
+              <Button variant="link" onClick={() => handleRepoClick(repoData.name)}>
+                View Details
+              </Button>
+              <Button variant="secondary" onClick={() => handleExportData(repoName, { repoData, issues, pullRequests, commits, codeReviews, comments })}>
+                Export Data
+              </Button>
+            </>
+          )}
         </div>
       )}
 

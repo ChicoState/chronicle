@@ -64,13 +64,9 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, code
     return paginatedIssues.map((issue, index) => (
       <div key={index} style={{ marginBottom: '20px' }}>
         <h5>Issue Title: {issue.title}</h5>
-        <p>Author: {issue.user.login}</p>
-        <p>Created At: {new Date(issue.created_at).toLocaleString()}</p>
         <p>State: {issue.state}</p>
-        <p>Description: {issue.body}</p>
-        <p>Assignees: {issue.assignees.map(assignee => assignee.login).join(', ')}</p>
-        <p>Closed At: {issue.closed_at ? new Date(issue.closed_at).toLocaleString() : 'Not closed'}</p>
-        <p>Closed By: {issue.closed_by ? issue.closed_by.login : 'N/A'}</p>
+        <p>Created At: {new Date(issue.created_at).toLocaleString()}</p>
+        <p>Updated At: {new Date(issue.updated_at).toLocaleString()}</p>
       </div>
     ));
   };
@@ -80,14 +76,11 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, code
     const paginatedPullRequests = pullRequests.slice(startIndex, startIndex + itemsPerPage);
     return paginatedPullRequests.map((pr, index) => (
       <div key={index} style={{ marginBottom: '20px' }}>
-        <h5>Pull Request Title: {pr.title}</h5>
-        <p>Author: {pr.user.login}</p>
+        <h5>PR Title: {pr.title}</h5>
+        <p>State: {pr.state}</p>
         <p>Created At: {new Date(pr.created_at).toLocaleString()}</p>
-        <p>Status: {pr.state}</p>
-        <p>Description: {pr.body}</p>
-        <p>Reviewers: {pr.requested_reviewers.map(reviewer => reviewer.login).join(', ')}</p>
-        <p>Merged At: {pr.merged_at ? new Date(pr.merged_at).toLocaleString() : 'Not merged'}</p>
-        <p>Closed At: {pr.closed_at ? new Date(pr.closed_at).toLocaleString() : 'Not closed'}</p>
+        <p>Updated At: {new Date(pr.updated_at).toLocaleString()}</p>
+        <p>URL: <a href={pr.html_url} target="_blank" rel="noopener noreferrer">{pr.html_url}</a></p>
       </div>
     ));
   };
@@ -97,11 +90,11 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, code
     const paginatedCodeReviews = codeReviews.slice(startIndex, startIndex + itemsPerPage);
     return paginatedCodeReviews.map((review, index) => (
       <div key={index} style={{ marginBottom: '20px' }}>
-        <h5>Date/Time Submitted: {new Date(review.submitted_at).toLocaleString()}</h5>
-        <p>ID #: {review.pull_request_url.split('/').pop()}</p>
-        <p>Reviewer: {review.user.login}</p>
-        <p>Status: {review.state}</p>
-        <p>Description: {review.body}</p>
+        <h5>Reviewer: {review.user.login}</h5>
+        <p>State: {review.state}</p>
+        <p>Submitted At: {new Date(review.submitted_at).toLocaleString()}</p>
+        <p>Pull Request URL: <a href={review.pull_request_url} target="_blank" rel="noopener noreferrer">{review.pull_request_url}</a></p>
+        <p>Body: {review.body}</p>
       </div>
     ));
   };
@@ -111,61 +104,53 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, code
     const paginatedComments = comments.slice(startIndex, startIndex + itemsPerPage);
     return paginatedComments.map((comment, index) => (
       <div key={index} style={{ marginBottom: '20px' }}>
-        <h5>Comment by: {comment.user.login}</h5>
-        <p>Date: {new Date(comment.created_at).toLocaleString()}</p>
-        <p>Body: {comment.body}</p>
+        <h5>Commenter: {comment.user.login}</h5>
+        <p>Comment: {comment.body}</p>
+        <p>Created At: {new Date(comment.created_at).toLocaleString()}</p>
+        <p>Updated At: {new Date(comment.updated_at).toLocaleString()}</p>
       </div>
     ));
   };
 
   return (
     <div>
-      <h2>{`${username}/${repoName} Details`}</h2>
       <div>
-        <Button variant="link" onClick={() => setActiveTab('issues')}>Issues</Button>
-        <Button variant="link" onClick={() => setActiveTab('pullRequests')}>Pull Requests</Button>
-        <Button variant="link" onClick={() => setActiveTab('commits')}>Commits</Button>
-        <Button variant="link" onClick={() => setActiveTab('codeReviews')}>Code Reviews</Button>
-        <Button variant="link" onClick={() => setActiveTab('comments')}>Comments</Button>
+        <Button variant={activeTab === 'issues' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('issues'); setCurrentPage(1); }}>Issues</Button>
+        <Button variant={activeTab === 'pullRequests' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('pullRequests'); setCurrentPage(1); }}>Pull Requests</Button>
+        <Button variant={activeTab === 'commits' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('commits'); setCurrentPage(1); }}>Commits</Button>
+        <Button variant={activeTab === 'codeReviews' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('codeReviews'); setCurrentPage(1); }}>Code Reviews</Button>
+        <Button variant={activeTab === 'comments' ? 'primary' : 'secondary'} onClick={() => { setActiveTab('comments'); setCurrentPage(1); }}>Comments</Button>
       </div>
-
-      <div>
-        {activeTab === 'issues' && (
-          <div>
-            <h3>Issues</h3>
-            {renderIssues(issues)}
-            {renderPagination(issues)}
-          </div>
-        )}
-        {activeTab === 'pullRequests' && (
-          <div>
-            <h3>Pull Requests</h3>
-            {renderPullRequests(pullRequests)}
-            {renderPagination(pullRequests)}
-          </div>
-        )}
-        {activeTab === 'commits' && (
-          <div>
-            <h3>Commits</h3>
-            {renderCommits(commits)}
-            {renderPagination(commits)}
-          </div>
-        )}
-        {activeTab === 'codeReviews' && (
-          <div>
-            <h3>Code Reviews</h3>
-            {renderCodeReviews(codeReviews)}
-            {renderPagination(codeReviews)}
-          </div>
-        )}
-        {activeTab === 'comments' && (
-          <div>
-            <h3>Comments</h3>
-            {renderComments(comments)}
-            {renderPagination(comments)}
-          </div>
-        )}
-      </div>
+      {activeTab === 'issues' && (
+        <>
+          {renderIssues(issues)}
+          {renderPagination(issues)}
+        </>
+      )}
+      {activeTab === 'pullRequests' && (
+        <>
+          {renderPullRequests(pullRequests)}
+          {renderPagination(pullRequests)}
+        </>
+      )}
+      {activeTab === 'commits' && (
+        <>
+          {renderCommits(commits)}
+          {renderPagination(commits)}
+        </>
+      )}
+      {activeTab === 'codeReviews' && (
+        <>
+          {renderCodeReviews(codeReviews)}
+          {renderPagination(codeReviews)}
+        </>
+      )}
+      {activeTab === 'comments' && (
+        <>
+          {renderComments(comments)}
+          {renderPagination(comments)}
+        </>
+      )}
     </div>
   );
 };

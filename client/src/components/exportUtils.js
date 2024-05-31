@@ -64,8 +64,8 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             "N/A",
             `"${pullRequest.title.replace(/"/g, '""')}"`,
             formatList(pullRequest.assignees),
-            pullRequest.closed_at ? formatDate(pullRequest.closed_at) : "N/A", // Check if closed_at exists
-            pullRequest.closed_by ? pullRequest.closed_by.login : "N/A", // Check if closed_by exists
+            pullRequest.closed_at ? formatDate(pullRequest.closed_at) : "N/A",
+            pullRequest.closed_by ? pullRequest.closed_by.login : "N/A",
             pullRequest.state,
             formatList(pullRequest.requested_reviewers),
             "N/A",
@@ -85,8 +85,8 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             "N/A",
             `"${issue.title.replace(/"/g, '""')}"`,
             formatList(issue.assignees),
-            issue.closed_at ? formatDate(issue.closed_at) : "N/A", // Check if closed_at exists
-            issue.closed_by ? issue.closed_by.login : "N/A", // Check if closed_by exists
+            issue.closed_at ? formatDate(issue.closed_at) : "N/A",
+            issue.closed_by ? issue.closed_by.login : "N/A",
             issue.state,
             "N/A",
             "N/A",
@@ -104,7 +104,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             review.pull_request_url.split('/').pop(),
             "N/A",
             "N/A",
-            `"${review.body.replace(/"/g, '""')}"`,
+            `"${review.body ? review.body.replace(/"/g, '""') : 'N/A'}"`,
             "N/A",
             "N/A",
             "N/A",
@@ -146,7 +146,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
     downloadAnchorNode.setAttribute("download", `${repoName}_data.csv`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    document.body.removeChild(downloadAnchorNode);
 };
 
 export default handleExportData;
