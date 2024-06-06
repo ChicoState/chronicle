@@ -23,7 +23,6 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
         "Additions",
         "Deletions",
         "Message",
-        "Description",
         "Assignees",
         "Close_date",
         "Closed_by",
@@ -39,7 +38,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             repoName,
             formatDate(commit.commit.author.date),
             "commit",
-            commit.author.login,
+            commit.commit.author.name,
             commit.sha,
             "N/A",
             "N/A",
@@ -64,11 +63,11 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             "N/A",
             "N/A",
             `"${pullRequest.title.replace(/"/g, '""')}"`,
-            formatList(pullRequest.assignees) ? formatList(pullRequest.assignees) : "N/A",
-            pullRequest.closed_at ? formatDate(pullRequest.closed_at) : "N/A", // Check if closed_at exists
-            pullRequest.closed_by ? pullRequest.closed_by.login : "N/A", // Check if closed_by exists
-            pullRequest.state ? pullRequest.state : "N/A",
-            formatList(pullRequest.requested_reviewers) ? formatList(pullRequest.requested_reviewers) : "N/A",
+            formatList(pullRequest.assignees),
+            pullRequest.closed_at ? formatDate(pullRequest.closed_at) : "N/A",
+            pullRequest.closed_by ? pullRequest.closed_by.login : "N/A",
+            pullRequest.state,
+            formatList(pullRequest.requested_reviewers),
             "N/A",
             "N/A"
         ]);
@@ -85,9 +84,9 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             "N/A",
             "N/A",
             `"${issue.title.replace(/"/g, '""')}"`,
-            formatList(issue.assignees) ? formatList(issue.assignees) : "N/A",
-            issue.closed_at ? formatDate(issue.closed_at) : "N/A", // Check if closed_at exists
-            issue.closed_by ? issue.closed_by.login : "N/A", // Check if closed_by exists
+            formatList(issue.assignees),
+            issue.closed_at ? formatDate(issue.closed_at) : "N/A",
+            issue.closed_by ? issue.closed_by.login : "N/A",
             issue.state,
             "N/A",
             "N/A",
@@ -99,13 +98,13 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
     codeReviews.forEach(review => {
         csvRows.push([
             repoName,
-            formatDate(review.created_at),
+            formatDate(review.submitted_at),
             "code_review",
             review.user.login,
             review.pull_request_url.split('/').pop(),
             "N/A",
             "N/A",
-            `"${review.body.replace(/"/g, '""')}"`,
+            `"${review.body ? review.body.replace(/"/g, '""') : 'N/A'}"`,
             "N/A",
             "N/A",
             "N/A",
@@ -147,7 +146,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
     downloadAnchorNode.setAttribute("download", `${repoName}_data.csv`);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    document.body.removeChild(downloadAnchorNode);
 };
 
 export default handleExportData;

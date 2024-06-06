@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import axios from 'axios';
@@ -6,7 +6,7 @@ import GitHubDetails from "./GitHubDetails";
 import handleExportData from "./exportUtils";
 
 const GitHubRepos = () => {
-  const [loginName, setLoginName] = useState('');
+  const [username, setUsername] = useState('');
   const [repoName, setRepoName] = useState('');
   const [repoData, setRepoData] = useState(null);
   const [issues, setIssues] = useState([]);
@@ -15,20 +15,26 @@ const GitHubRepos = () => {
   const [codeReviews, setCodeReviews] = useState([]);
   const [comments, setComments] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState(null);
+  const [isRepoFetched, setIsRepoFetched] = useState(false);
+
+  useEffect(() => {
+    if (username && repoName) {
+      fetchRepoData();
+    }
+  }, [username, repoName]);
 
   const fetchRepoData = async () => {
     try {
-      const repoResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}`);
-      console.log("Repo Response:", repoResponse.data);
-      const contResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/contributors`);
-      console.log("Repo Response:", contResponse.data);
+      const repoResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}`);
       setRepoData(repoResponse.data);
 
       await fetchAllIssues();
       await fetchAllPullRequests();
       await fetchAllCommits();
-      await fetchAllCodeReviews();
       await fetchAllComments();
+      await fetchAllCodeReviews();
+      
+      setIsRepoFetched(true); // Set visibility state to true after successful fetch
     } catch (error) {
       console.error(error);
       setRepoData(null);
@@ -37,6 +43,8 @@ const GitHubRepos = () => {
       setCommits([]);
       setCodeReviews([]);
       setComments([]);
+      
+      setIsRepoFetched(false); // Set visibility state to false on error
     }
   };
 
@@ -46,7 +54,7 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const issuesResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/issues`, {
+      const issuesResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues`, {
         params: { page, per_page: 100, state: "all" }
       });
       if (issuesResponse.data.length > 0) {
@@ -67,7 +75,7 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const pullRequestsResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/pulls`, {
+      const pullRequestsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls`, {
         params: { page, per_page: 100, state: "all" }
       });
       if (pullRequestsResponse.data.length > 0) {
@@ -86,18 +94,11 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const commitsResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/commits`, {
+      const commitsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/commits`, {
         params: { page, per_page: 100 }
       });
       if (commitsResponse.data.length > 0) {
-        // Check for each commit author and try to link to GitHub user
-        const mappedCommits = commitsResponse.data.map(commit => {
-          if (!commit.author) {
-            commit.author = { login: commit.commit.author.name }; // Fallback to commit author's name if author is null
-          }
-          return commit;
-        });
-        allCommits = allCommits.concat(mappedCommits);
+        allCommits = allCommits.concat(commitsResponse.data);
         page++;
       } else {
         hasMore = false;
@@ -107,22 +108,22 @@ const GitHubRepos = () => {
   };
 
   const fetchAllCodeReviews = async () => {
-    let page = 1;
-    let allCodeReviews = [];
-    let hasMore = true;
-
-    while (hasMore) {
-      const codeReviewResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/pulls/comments`, {
-        params: { page, per_page: 100 }
-      });
-      if (codeReviewResponse.data.length > 0) {
-        allCodeReviews = allCodeReviews.concat(codeReviewResponse.data);
-        page++;
-      } else {
-        hasMore = false;
-      }
+    const allReviews = [];
+    for (const pr of pullRequests) {
+      const reviews = await fetchCodeReviewsForPR(pr.number);
+      allReviews.push(...reviews);
     }
-    setCodeReviews(allCodeReviews);
+    setCodeReviews(allReviews);
+  };
+
+  const fetchCodeReviewsForPR = async (prNumber) => {
+    try {
+      const codeReviewsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls/${prNumber}/reviews`);
+      return codeReviewsResponse.data;
+    } catch (error) {
+      console.error(`Error fetching code reviews for PR ${prNumber}:`, error);
+      return [];
+    }
   };
 
   const fetchAllComments = async () => {
@@ -131,7 +132,7 @@ const GitHubRepos = () => {
     let hasMore = true;
 
     while (hasMore) {
-      const commentResponse = await axios.get(`https://api.github.com/repos/${loginName}/${repoName}/issues/comments`, {
+      const commentResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues/comments`, {
         params: { page, per_page: 100 }
       });
       if (commentResponse.data.length > 0) {
@@ -163,9 +164,9 @@ const GitHubRepos = () => {
       <div>
         <input
           type="text"
-          placeholder="Enter GitHub login name"
-          value={loginName}
-          onChange={(e) => setLoginName(e.target.value)}
+          placeholder="Enter GitHub username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
         />
         <input
           type="text"
@@ -182,18 +183,22 @@ const GitHubRepos = () => {
         <div>
           <h2>{repoData.full_name}</h2>
           <p>{repoData.description}</p>
-          <Button variant="link" onClick={() => handleRepoClick(repoData.name)}>
-            View Details
-          </Button>
-          <Button variant="secondary" onClick={() => handleExportData(repoName, { repoData, issues, pullRequests, commits, codeReviews, comments })}>
-            Export Data
-          </Button>
+          {isRepoFetched && (
+            <>
+              <Button variant="link" onClick={() => handleRepoClick(repoData.name)}>
+                View Details
+              </Button>
+              <Button variant="secondary" onClick={() => handleExportData(repoName, { repoData, issues, pullRequests, commits, codeReviews, comments })}>
+                Export Data
+              </Button>
+            </>
+          )}
         </div>
       )}
 
       {selectedRepo && (
         <GitHubDetails
-          username={loginName}
+          username={username}
           repoName={selectedRepo}
           issues={issues}
           pullRequests={pullRequests}
