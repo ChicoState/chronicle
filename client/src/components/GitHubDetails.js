@@ -52,7 +52,7 @@ const GitHubDetails = ({ username, repoName, issues, pullRequests, commits, code
     return paginatedCommits.map((commit, index) => (
       <div key={index} style={{ marginBottom: '20px' }}>
         <h5>Commit Message: {commit.commit.message}</h5>
-        <p>Author: {commit.commit.author.name} ({commit.commit.author.email})</p>
+        <p>Author: {commit.author.login} ({commit.commit.author.email})</p>
         <p>Date: {new Date(commit.commit.author.date).toLocaleString()}</p>
       </div>
     ));

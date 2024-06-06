@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
 import axios from 'axios';
@@ -17,34 +17,40 @@ const GitHubRepos = () => {
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [isRepoFetched, setIsRepoFetched] = useState(false);
 
-  useEffect(() => {
-    if (username && repoName) {
-      fetchRepoData();
-    }
-  }, [username, repoName]);
+  // GitHub token
+  const token = 'your_github_token_here';
+
+  const resetData = () => {
+    setRepoData(null);
+    setIssues([]);
+    setPullRequests([]);
+    setCommits([]);
+    setCodeReviews([]);
+    setComments([]);
+    setIsRepoFetched(false);
+  };
 
   const fetchRepoData = async () => {
     try {
-      const repoResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}`);
+      const repoResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}`, {
+        headers: {
+          Authorization: `token ${token}`
+        }
+      });
       setRepoData(repoResponse.data);
 
       await fetchAllIssues();
-      await fetchAllPullRequests();
+      const prs = await fetchAllPullRequests();
       await fetchAllCommits();
       await fetchAllComments();
-      await fetchAllCodeReviews();
+      
+      // Fetch code reviews after all pull requests have been fetched
+      await fetchAllCodeReviews(prs);
       
       setIsRepoFetched(true); // Set visibility state to true after successful fetch
     } catch (error) {
       console.error(error);
-      setRepoData(null);
-      setIssues([]);
-      setPullRequests([]);
-      setCommits([]);
-      setCodeReviews([]);
-      setComments([]);
-      
-      setIsRepoFetched(false); // Set visibility state to false on error
+      resetData();
     }
   };
 
@@ -55,7 +61,10 @@ const GitHubRepos = () => {
 
     while (hasMore) {
       const issuesResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues`, {
-        params: { page, per_page: 100, state: "all" }
+        params: { page, per_page: 100, state: "all" },
+        headers: {
+          Authorization: `token ${token}`
+        }
       });
       if (issuesResponse.data.length > 0) {
         // Filter out pull requests
@@ -76,7 +85,10 @@ const GitHubRepos = () => {
 
     while (hasMore) {
       const pullRequestsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls`, {
-        params: { page, per_page: 100, state: "all" }
+        params: { page, per_page: 100, state: "all" },
+        headers: {
+          Authorization: `token ${token}`
+        }
       });
       if (pullRequestsResponse.data.length > 0) {
         allPullRequests = allPullRequests.concat(pullRequestsResponse.data);
@@ -86,6 +98,7 @@ const GitHubRepos = () => {
       }
     }
     setPullRequests(allPullRequests);
+    return allPullRequests;
   };
 
   const fetchAllCommits = async () => {
@@ -95,10 +108,21 @@ const GitHubRepos = () => {
 
     while (hasMore) {
       const commitsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/commits`, {
-        params: { page, per_page: 100 }
+        params: { page, per_page: 100 },
+        headers: {
+          Authorization: `token ${token}`
+        }
       });
+      console.log("Commit Response:", commitsResponse.data);
       if (commitsResponse.data.length > 0) {
-        allCommits = allCommits.concat(commitsResponse.data);
+        // Check for each commit author and try to link to GitHub user
+        const mappedCommits = commitsResponse.data.map(commit => {
+          if (!commit.author.login) {
+            commit.author = { login: commit.commit.author.name }; // Fallback to commit author's name if author is null
+          }
+          return commit;
+        });
+        allCommits = allCommits.concat(mappedCommits);
         page++;
       } else {
         hasMore = false;
@@ -107,7 +131,7 @@ const GitHubRepos = () => {
     setCommits(allCommits);
   };
 
-  const fetchAllCodeReviews = async () => {
+  const fetchAllCodeReviews = async (pullRequests) => {
     const allReviews = [];
     for (const pr of pullRequests) {
       const reviews = await fetchCodeReviewsForPR(pr.number);
@@ -118,7 +142,11 @@ const GitHubRepos = () => {
 
   const fetchCodeReviewsForPR = async (prNumber) => {
     try {
-      const codeReviewsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls/${prNumber}/reviews`);
+      const codeReviewsResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/pulls/${prNumber}/reviews`, {
+        headers: {
+          Authorization: `token ${token}`
+        }
+      });
       return codeReviewsResponse.data;
     } catch (error) {
       console.error(`Error fetching code reviews for PR ${prNumber}:`, error);
@@ -133,7 +161,10 @@ const GitHubRepos = () => {
 
     while (hasMore) {
       const commentResponse = await axios.get(`https://api.github.com/repos/${username}/${repoName}/issues/comments`, {
-        params: { page, per_page: 100 }
+        params: { page, per_page: 100 },
+        headers: {
+          Authorization: `token ${token}`
+        }
       });
       if (commentResponse.data.length > 0) {
         allComments = allComments.concat(commentResponse.data);
@@ -146,6 +177,7 @@ const GitHubRepos = () => {
   };
 
   const handleRepoSearch = async () => {
+    resetData();  // Reset data before starting a new search
     await fetchRepoData();
   };
 

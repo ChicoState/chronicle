@@ -38,7 +38,7 @@ const handleExportData = (repoName, { repoData, issues, pullRequests, commits, c
             repoName,
             formatDate(commit.commit.author.date),
             "commit",
-            commit.commit.author.name,
+            commit.author.login,
             commit.sha,
             "N/A",
             "N/A",
