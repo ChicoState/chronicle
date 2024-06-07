@@ -16,6 +16,7 @@ const GitHubRepos = () => {
   const [comments, setComments] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [isRepoFetched, setIsRepoFetched] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   // GitHub token
   const token = 'your_github_token_here';
@@ -28,6 +29,7 @@ const GitHubRepos = () => {
     setCodeReviews([]);
     setComments([]);
     setIsRepoFetched(false);
+    setErrorMessage('');
   };
 
   const fetchRepoData = async () => {
@@ -49,7 +51,11 @@ const GitHubRepos = () => {
       
       setIsRepoFetched(true); // Set visibility state to true after successful fetch
     } catch (error) {
-      console.error(error);
+      if (error.response && error.response.status === 404) {
+        setErrorMessage('Repository not found.');
+      } else {
+        setErrorMessage('An error occurred while fetching the repository data.');
+      }
       resetData();
     }
   };
@@ -117,7 +123,7 @@ const GitHubRepos = () => {
       if (commitsResponse.data.length > 0) {
         // Check for each commit author and try to link to GitHub user
         const mappedCommits = commitsResponse.data.map(commit => {
-          if (!commit.author.login) {
+          if (!commit.author) {
             commit.author = { login: commit.commit.author.name }; // Fallback to commit author's name if author is null
           }
           return commit;
@@ -210,6 +216,12 @@ const GitHubRepos = () => {
           Search
         </Button>
       </div>
+
+      {errorMessage && (
+        <div style={{ color: 'red' }}>
+          {errorMessage}
+        </div>
+      )}
 
       {repoData && (
         <div>
