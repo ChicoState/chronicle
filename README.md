@@ -1,9 +1,14 @@
 # chronicle
 
-## Steps to run the App:
+## Getting Started
 
-1. cd client
-2. npm start
+1. Generate a [GitHub Personal Access Token](https://github.com/settings/tokens/new) that has permissions for all **read** scopes. Copy the token provided.
+2. Create a file `client/.env` in the project root directory and edit it with the line: `REACT_APP_GITHUB_KEY=` followed by the token pasted from the previous step.
+
+## Run the program
+
+1. `cd client`
+2. `npm start`
 
 To set the required Github Account -> Go to App.js and change the userName required.
 
