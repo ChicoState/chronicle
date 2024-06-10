@@ -19,7 +19,7 @@ const GitHubRepos = () => {
   const [errorMessage, setErrorMessage] = useState('');
 
   // GitHub token
-  const token = 'your_github_token_here';
+  const token = process.env.REACT_APP_GITHUB_KEY;
 
   const resetData = () => {
     setRepoData(null);
