@@ -1,0 +1,111 @@
+---
+title: "Data Analysis for Chronicle Project"
+author: "Kevin Buffardi"
+date: "`r Sys.Date()`"
+output:
+  html_document: 
+    toc: true
+    toc_float: false
+    number_sections: true
+    theme: readable
+    highlight: textmate
+    smart: true
+    df_print: tibble
+    code_folding: show
+---
+
+Load required packages.
+```{r setup, include=FALSE, error=FALSE, warning=FALSE, message=FALSE}
+library("readxl")
+library("tidyr")
+library("dplyr")
+library("ggplot2")
+library("writexl")
+library("caret")
+library("tibble")
+library("psych")
+library("stringr")
+library("DescTools")
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First, we will load the anonymized GitHub and survey data:
+```{r loading_data}
+# github <- readxl::read_csv("data/coded_collated_data.csv")
+# survey <- readxl::read_csv("data/coded_survey_anonymous.csv")
+```
+
+At a glance, here are some descriptive statistics of our data:
+
+  * Total number of teams
+  * Total number of students
+  * Team trends:
+    * Commits (M = `r `, sd = `r `)
+    * Pull requests (M = `r `, sd = `r `)
+    * Issues (M = `r `, sd = `r `)
+    * Comments (M = `r `, sd = `r `)
+    * Code Reviews (M = `r `, sd = `r `)
+    * Total artifacts (M = `r `, sd = `r `)
+    
+For each team, we need to calculate their aggregate score for **Conflict** and **Cohesiveness**, by finding the median score of the answers
+of all of the members of the team (who responded).
+
+  * **Conflict**. Conflict questions include:
+    * `How frequently do you have disagreements within your work group about the task of the project you are working on?`
+    * `How often do people in your work group have conflicting opinions about the project you are working on?`
+    * `How much emotional conflict is there in your work group?`
+    * `How often do people get angry while working in your group?`
+    * `How much conflict of ideas is there in your work group?`
+    * `How often do you disagree about resource allocation in your work group?`
+    * `How much relationship tension is there in your work group?`
+    * `How often are there disagreements about who should do what in your work group?`
+    * `How much conflict is there in your group about task responsibilities?`
+  * **Cohesiveness**. Cohesiveness questions include:
+    * `Team members get to participate in enjoyable activities`
+    * `Team members enjoy spending time together`
+    * `Team members get along well`
+    * `I'm unhappy with my team's level of commitment to the task` (inverse scale should be reversed by `6-x` where x is the raw value)
+    * `Our team is united in trying to reach its goals for performance`
+    * `Our team members have conflicting aspirations for the team's performance`
+    * `Team members like each other`
+    * `Team members like the work that the group does`
+    * `Being part of the team allows team members to do enjoyable work`
+
+```{r calc_team_survey_scores}
+
+```
+
+
+Then, we want to look at the descriptive statistics for these team conflict and cohesiveness scores:
+
+  * Team conflict (M = `r `, sd = `r `)
+  * Team cohesiveness (M = `r `, sd = `r `)
+  
+Next, we want to determine statistics about individuals:
+  * the number of artifacts by each person in the GitHub data (M = `r `, sd = `r `)
+  * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"**
+
+```{r individuals_artifacts}
+
+```
+
+To determine the (in)equality within each team, we use [`Gini` from `DescTools`](https://search.r-project.org/CRAN/refmans/DescTools/html/Gini.html) to calculate the [Gini coefficient](https://en.wikipedia.org/wiki/Gini_coefficient). Low values (approaching 0) indicate equality while high values (approaching 1) represent inequality.
+
+  * Team Gini for total number of artifacts (M = `r `, sd = `r `)
+  * Team Gini for consistency (M = `r `, sd = `r `)
+  
+```{r gini}
+
+```
+
+What is the correlation between:
+
+  * Team Gini for total number of artifacts *vs* Team conflict (rho and p-value): `r `
+  * Team Gini for total number of artifacts *vs* Team cohesiveness (rho and p-value): `r `
+  * Team Gini for consistency *vs* Team conflict (rho and p-value): `r `
+  * Team Gini for consistency *vs* Team cohesiveness (rho and p-value): `r `
+  
+Which is a better predictor of conflict (multiple linear regression: conflict~gini_artifacts + gini_consistency)? `r `
+
+Which is a better predictor of cohesiveness (multiple linear regression: conflict~gini_artifacts + gini_consistency)? `r `
