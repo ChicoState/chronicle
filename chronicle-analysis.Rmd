@@ -16,7 +16,7 @@ output:
 
 Load required packages.
 ```{r setup, include=FALSE, error=FALSE, warning=FALSE, message=FALSE}
-library("readxl")
+library("readr")
 library("tidyr")
 library("dplyr")
 library("ggplot2")
@@ -32,8 +32,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 First, we will load the anonymized GitHub and survey data:
 ```{r loading_data}
-# github <- readxl::read_csv("data/coded_collated_data.csv")
-# survey <- readxl::read_csv("data/coded_survey_anonymous.csv")
+github <- readr::read_csv("coded_collated_data.csv")
+survey <- readr::read_csv("coded_survey_anonymous.csv")
 ```
 
 At a glance, here are some descriptive statistics of our data:
@@ -47,6 +47,31 @@ At a glance, here are some descriptive statistics of our data:
     * Comments (M = `r `, sd = `r `)
     * Code Reviews (M = `r `, sd = `r `)
     * Total artifacts (M = `r `, sd = `r `)
+
+```{r number of teams}
+unique_github_repos <- unique(github$`Repository`)
+unique_survey_repos <- unique(survey$`Your Team`)
+
+total_github_repos <- length(unique_github_repos)
+total_survey_repos <- length(unique_survey_repos)
+
+print(paste("Unique repositories in GitHub data:", total_github_repos))
+print(paste("Unique repositories in Survey data:", total_survey_repos))
+
+```
+```{r number of students}
+all_users <- c(
+  github$Author, 
+  unlist(strsplit(github$Reviewers, ";")), 
+  unlist(strsplit(github$Assignees, ";"))
+)
+all_users <- all_users[!is.na(all_users) & all_users != ""]
+
+unique_users <- unique(all_users)
+total_unique_users <- length(unique_users)
+print(paste("Total number of unique users:", total_unique_users))
+
+```
     
 For each team, we need to calculate their aggregate score for **Conflict** and **Cohesiveness**, by finding the median score of the answers
 of all of the members of the team (who responded).
