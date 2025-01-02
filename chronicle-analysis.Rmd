@@ -1,6 +1,6 @@
 ---
 title: "Data Analysis for Chronicle Project"
-author: "Kevin Buffardi"
+author: "Kevin Buffardi and Rahul Bijoor"
 date: "`r Sys.Date()`"
 output:
   html_document: 
@@ -14,9 +14,10 @@ output:
     code_folding: show
 ---
 
-Load required packages.
+
 ```{r setup, include=FALSE, error=FALSE, warning=FALSE, message=FALSE}
-library("readxl")
+# Load required packages (hidden from knitted document)
+library("readr")
 library("tidyr")
 library("dplyr")
 library("ggplot2")
@@ -31,22 +32,28 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 First, we will load the anonymized GitHub and survey data:
-```{r loading_data}
-# github <- readxl::read_csv("data/coded_collated_data.csv")
-# survey <- readxl::read_csv("data/coded_survey_anonymous.csv")
+```{r loading_data, message = FALSE, warning = FALSE}
+github <- readr::read_csv("data/coded_collated_data.csv")
+survey <- readr::read_csv("data/coded_survey_anonymous.csv")
 ```
 
 At a glance, here are some descriptive statistics of our data:
 
-  * Total number of teams
-  * Total number of students
-  * Team trends:
-    * Commits (M = `r `, sd = `r `)
-    * Pull requests (M = `r `, sd = `r `)
-    * Issues (M = `r `, sd = `r `)
-    * Comments (M = `r `, sd = `r `)
-    * Code Reviews (M = `r `, sd = `r `)
-    * Total artifacts (M = `r `, sd = `r `)
+  * Total number of teams: **`r github %>% select(Repository) %>% unique() %>% nrow()`**
+  * Total number of students: **`r github %>% select(Author) %>% unique() %>% nrow()`**
+  
+Summarize team trends:
+```{r team trends}
+github_by_team <- github %>% select(Repository,Action) %>% pivot_wider(names_from = Action, values_from = Action, values_fn = length)
+github_by_team <- github_by_team %>% mutate(total = commit+pull_request+issue+comment+code_review)
+```
+  * Trends, per team:
+    * Commits (M = **`r github_by_team %>% pull(commit) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(commit) %>% sd(na.rm=TRUE)`**)
+    * Pull requests (M = **`r github_by_team %>% pull(pull_request) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(pull_request) %>% sd(na.rm=TRUE)`**)
+    * Issues (M = **`r github_by_team %>% pull(issue) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(issue) %>% sd(na.rm=TRUE)`**)
+    * Comments (M = **`r github_by_team %>% pull(comment) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(comment) %>% sd(na.rm=TRUE)`**)
+    * Code Reviews (M = **`r github_by_team %>% pull(code_review) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(code_review) %>% sd(na.rm=TRUE)`**)
+    * Total artifacts (M = **`r github_by_team %>% pull(total) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(total) %>% sd(na.rm=TRUE)`**)
     
 For each team, we need to calculate their aggregate score for **Conflict** and **Cohesiveness**, by finding the median score of the answers
 of all of the members of the team (who responded).
