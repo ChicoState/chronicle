@@ -143,14 +143,19 @@ github_by_individual <- github_by_individual %>%
   * the total number of activities per individual (M = `r github_by_individual %>% pull(activity) %>% mean(na.rm=TRUE)`, sd = `r github_by_individual %>% pull(activity) %>% sd(na.rm=TRUE)`)
 
 ```{r individuals_artifacts}
-
+team_gini <- github_by_individual %>%
+    group_by(Repository) %>%
+    summarize(
+        Gini_Artifacts = Gini(activity),
+        Gini_Consistency = Gini(consistency)
+    )
 
 ```
 
 To determine the (in)equality within each team, we use [`Gini` from `DescTools`](https://search.r-project.org/CRAN/refmans/DescTools/html/Gini.html) to calculate the [Gini coefficient](https://en.wikipedia.org/wiki/Gini_coefficient). Low values (approaching 0) indicate equality while high values (approaching 1) represent inequality.
 
-  * Team Gini for total number of artifacts (M = `r `, sd = `r `)
-  * Team Gini for consistency (M = `r `, sd = `r `)
+  * Team Gini for total number of artifacts (M = `r team_gini %>% pull(Gini_Artifacts) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Artifacts) %>% sd(na.rm = TRUE)`)
+  * Team Gini for consistency (M = `r team_gini %>% pull(Gini_Consistency) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Consistency) %>% sd(na.rm = TRUE)`)
   
 ```{r gini}
 
