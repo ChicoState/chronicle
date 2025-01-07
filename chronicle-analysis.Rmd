@@ -131,10 +131,11 @@ Next, we want to determine statistics about individuals:
 # For each individual, how many artifacts did they contribute per week:
 github_by_individual <- github %>% select(Repository,Author,week) %>% 
                         pivot_wider(names_from = week, values_from = week, values_fn = length) %>%
-                        replace(is.na(.), 0) %>% 
-                        mutate_if(is.numeric, ~1 * (. > 0)) %>% 
-                        mutate(consistency = (`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`+`14`+`15`+`16`)/16,
-                               activity = `1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`+`14`+`15`+`16`) %>%
+                        replace(is.na(.), 0) %>%
+                        mutate(activity=(`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`+`14`+`15`+`16`))
+github_by_individual <- github_by_individual %>%
+                        mutate(across(!activity & is.numeric, ~1 * (. > 0))) %>% 
+                        mutate(consistency = (`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`+`14`+`15`+`16`)/16) %>%
                         select(Repository,Author,consistency,activity)
 ```
 
