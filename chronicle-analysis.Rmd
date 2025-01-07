@@ -126,8 +126,18 @@ Then, we want to look at the descriptive statistics for these team conflict and 
   * Team cohesiveness (M = `r mean(aggregate_scores %>% pull(Cohesiveness), na.rm = TRUE) %>% round(2)`, sd = `r sd(aggregate_scores %>% pull(Cohesiveness), na.rm = TRUE) %>% round(2)`)
   
 Next, we want to determine statistics about individuals:
-  * the number of artifacts by each person in the GitHub data (M = `r `, sd = `r `)
-  * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"**
+
+```{r by individual}
+# For each individual, how many artifacts did they contribute per week:
+github_by_individual <- github %>% select(Repository,Author,week) %>% 
+                        pivot_wider(names_from = week, values_from = week, values_fn = length) %>%
+                        replace(is.na(.), 0) %>% 
+                        mutate_if(is.numeric, ~1 * (. > 0)) %>% 
+                        mutate(consistency = (`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`+`14`+`15`+`16`)/16) %>%
+                        select(Repository,Author,consistency)
+```
+
+  * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"** (M = `r github_by_individual %>% pull(consistency) %>% mean(na.rm=TRUE)`, sd = `r github_by_individual %>% pull(consistency) %>% sd(na.rm=TRUE)`)
 
 ```{r individuals_artifacts}
 
