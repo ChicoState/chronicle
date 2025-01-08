@@ -157,6 +157,8 @@ To determine the (in)equality within each team, we use [`Gini` from `DescTools`]
   * Team Gini for consistency (M = `r team_gini %>% pull(Gini_Consistency) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Consistency) %>% sd(na.rm = TRUE)`)
   
 ```{r correlations}
+team_gini$Repository <- trimws(team_gini$Repository)
+aggregate_scores$`Your Team` <- trimws(aggregate_scores$`Your Team`)
 team_outcomes <- merge(x=team_gini,y=aggregate_scores, by.x = "Repository", by.y = "Your Team", all=TRUE)
 quantity_v_conflict <- cor.test(team_outcomes$Gini_Artifacts,team_outcomes$Conflict, method = "spearman")
 quantity_v_cohesiveness <- cor.test(team_outcomes$Gini_Artifacts,team_outcomes$Cohesiveness, method = "spearman")
@@ -171,7 +173,13 @@ What is the correlation between:
   * Team Gini for consistency *vs* Team conflict (rho=`r consistency_v_conflict$estimate`, p=`r consistency_v_conflict$p.value`)
   * Team Gini for consistency *vs* Team cohesiveness (rho=`r consistency_v_cohesiveness$estimate`, p=`r consistency_v_cohesiveness$p.value`)
   
-  
+```{r}
+colnames(team_gini)
+colnames(aggregate_scores)
+setdiff(team_gini$Repository, aggregate_scores$`Your Team`)
+setdiff(aggregate_scores$`Your Team`, team_gini$Repository)
+
+```
 ```{r linear models}
 model_conflict <- lm(team_outcomes$Conflict ~ team_outcomes$Gini_Artifacts + team_outcomes$Gini_Consistency)
 model_cohesiveness <- lm(team_outcomes$Cohesiveness ~ team_outcomes$Gini_Artifacts + team_outcomes$Gini_Consistency)
@@ -187,4 +195,26 @@ Which is a better predictor of cohesiveness (multiple linear regression: conflic
 
 ```{r}
 summary(model_cohesiveness)
+```
+```{r}
+sum(is.na(team_outcomes$Conflict)) 
+sum(is.na(team_outcomes$Cohesiveness)) 
+```
+```{r}
+library(MASS)
+# Convert 'Conflict' to an ordered factor (adjust levels as per your data)
+team_outcomes$Conflict <- factor(team_outcomes$Conflict, 
+                                 levels = c("Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"), 
+                                 ordered = TRUE)
+
+# Convert 'Cohesiveness' to an ordered factor (adjust levels as per your data)
+team_outcomes$Cohesiveness <- factor(team_outcomes$Cohesiveness, 
+                                     levels = c("Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"), 
+                                     ordered = TRUE)
+
+# Fit the ordinal logistic regression model for Conflict
+model_conflict_ordinal <- polr(Conflict ~ Gini_Artifacts + Gini_Consistency, data = team_outcomes, method = "logistic")
+
+# View the summary of the model
+summary(model_conflict_ordinal)
 ```
