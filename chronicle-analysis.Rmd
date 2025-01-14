@@ -45,7 +45,9 @@ At a glance, here are some descriptive statistics of our data:
 Summarize team trends:
 ```{r team trends}
 github_by_team <- github %>% select(Repository,Action) %>% pivot_wider(names_from = Action, values_from = Action, values_fn = length)
-github_by_team <- github_by_team %>% mutate(total = commit+pull_request+issue+comment+code_review)
+github_by_team <- github_by_team %>% 
+                  replace(is.na(.), 0) %>% 
+                  mutate(total = commit+pull_request+issue+comment+code_review)
 ```
   * Trends, per team:
     * Commits (M = **`r github_by_team %>% pull(commit) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(commit) %>% sd(na.rm=TRUE)`**)
@@ -128,21 +130,22 @@ Next, we want to determine statistics about individuals:
 
 ```{r by individual}
 # For each individual, how many artifacts did they contribute per week:
-github_by_individual <- github %>% select(Repository,Author,week) %>% 
+github_by_individual <- github %>% select(Repository,Author,week) %>%
                         pivot_wider(names_from = week, values_from = week, values_fn = length) %>%
                         replace(is.na(.), 0) %>%
-                        mutate(activity=(`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`+`14`+`15`+`16`))
-github_by_individual <- github_by_individual %>%
-                        mutate(across(!activity & is.numeric, ~1 * (. > 0))) %>% 
-                        mutate(consistency = (`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`+`14`+`15`+`16`)/16) %>%
-                        select(Repository,Author,consistency,activity)
+                        select(Repository,Author,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`,`13`) %>% 
+                        mutate(activity=`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`) %>%
+                        mutate(consistency = (as.integer(`1`>0)+as.integer(`2`>0)+as.integer(`3`>0)+as.integer(`4`>0)+as.integer(`5`>0)+as.integer(`6`>0)+as.integer(`7`>0)+as.integer(`8`>0)+as.integer(`9`>0)+as.integer(`10`>0)+as.integer(`11`>0)+as.integer(`12`>0)+as.integer(`13`>0))/13)
+
+individual_summary <- github_by_individual %>% select(Repository,Author,activity,consistency)
+
 ```
 
-  * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"** (M = `r github_by_individual %>% pull(consistency) %>% mean(na.rm=TRUE)`, sd = `r github_by_individual %>% pull(consistency) %>% sd(na.rm=TRUE)`)
-  * the total number of activities per individual (M = `r github_by_individual %>% pull(activity) %>% mean(na.rm=TRUE)`, sd = `r github_by_individual %>% pull(activity) %>% sd(na.rm=TRUE)`)
+  * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"** (M = `r individual_summary %>% pull(consistency) %>% mean(na.rm=TRUE)`, sd = `r individual_summary %>% pull(consistency) %>% sd(na.rm=TRUE)`)
+  * the total number of activities per individual (M = `r individual_summary %>% pull(activity) %>% mean(na.rm=TRUE)`, sd = `r individual_summary %>% pull(activity) %>% sd(na.rm=TRUE)`)
 
 ```{r individuals_artifacts}
-team_gini <- github_by_individual %>%
+team_gini <- individual_summary %>%
     group_by(Repository) %>%
     summarize(
         Gini_Artifacts = Gini(activity),
@@ -156,10 +159,18 @@ To determine the (in)equality within each team, we use [`Gini` from `DescTools`]
   * Team Gini for total number of artifacts (M = `r team_gini %>% pull(Gini_Artifacts) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Artifacts) %>% sd(na.rm = TRUE)`)
   * Team Gini for consistency (M = `r team_gini %>% pull(Gini_Consistency) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Consistency) %>% sd(na.rm = TRUE)`)
   
-```{r correlations}
+```{r combine}
 team_gini$Repository <- trimws(team_gini$Repository)
 aggregate_scores$`Your Team` <- trimws(aggregate_scores$`Your Team`)
 team_outcomes <- merge(x=team_gini,y=aggregate_scores, by.x = "Repository", by.y = "Your Team", all=TRUE)
+```
+
+
+
+
+Investigate correlations:
+
+```{r correlations}
 quantity_v_conflict <- cor.test(team_outcomes$Gini_Artifacts,team_outcomes$Conflict, method = "spearman")
 quantity_v_cohesiveness <- cor.test(team_outcomes$Gini_Artifacts,team_outcomes$Cohesiveness, method = "spearman")
 consistency_v_conflict <- cor.test(team_outcomes$Gini_Consistency,team_outcomes$Conflict, method = "spearman")
@@ -172,14 +183,7 @@ What is the correlation between:
   * Team Gini for total number of artifacts *vs* Team cohesiveness (rho=`r quantity_v_cohesiveness$estimate`, p=`r quantity_v_cohesiveness$p.value`)
   * Team Gini for consistency *vs* Team conflict (rho=`r consistency_v_conflict$estimate`, p=`r consistency_v_conflict$p.value`)
   * Team Gini for consistency *vs* Team cohesiveness (rho=`r consistency_v_cohesiveness$estimate`, p=`r consistency_v_cohesiveness$p.value`)
-  
-```{r}
-colnames(team_gini)
-colnames(aggregate_scores)
-setdiff(team_gini$Repository, aggregate_scores$`Your Team`)
-setdiff(aggregate_scores$`Your Team`, team_gini$Repository)
 
-```
 ```{r linear models}
 model_conflict <- lm(team_outcomes$Conflict ~ team_outcomes$Gini_Artifacts + team_outcomes$Gini_Consistency)
 model_cohesiveness <- lm(team_outcomes$Cohesiveness ~ team_outcomes$Gini_Artifacts + team_outcomes$Gini_Consistency)
@@ -196,25 +200,44 @@ Which is a better predictor of cohesiveness (multiple linear regression: conflic
 ```{r}
 summary(model_cohesiveness)
 ```
-```{r}
-sum(is.na(team_outcomes$Conflict)) 
-sum(is.na(team_outcomes$Cohesiveness)) 
+
+
+Post-hoc analysis of slackers:
+
+```{r slackers}
+slackers <- github_by_individual
+slackers <- slackers %>% filter(consistency == (1/13)) %>% mutate(lone="mid")
+slackers$lone[slackers$`1` | slackers$`2`] <- "early"
+slackers$lone[slackers$`12` | slackers$`13`] <- "late"
 ```
-```{r}
-library(MASS)
-# Convert 'Conflict' to an ordered factor (adjust levels as per your data)
-team_outcomes$Conflict <- factor(team_outcomes$Conflict, 
-                                 levels = c("Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"), 
-                                 ordered = TRUE)
 
-# Convert 'Cohesiveness' to an ordered factor (adjust levels as per your data)
-team_outcomes$Cohesiveness <- factor(team_outcomes$Cohesiveness, 
-                                     levels = c("Strongly Disagree", "Disagree", "Neutral", "Agree", "Strongly Agree"), 
-                                     ordered = TRUE)
+There were **`r slackers %>% nrow()`** individuals who only showed github activities during one week of the semester. 
 
-# Fit the ordinal logistic regression model for Conflict
-model_conflict_ordinal <- polr(Conflict ~ Gini_Artifacts + Gini_Consistency, data = team_outcomes, method = "logistic")
+  - They belonged to **`r slackers %>% select(Repository) %>% unique() %>% nrow()`** teams
+  - Their activities were relatively low during that week (M=**`r slackers %>% pull(activity) %>% mean(na.rm=TRUE)`**, sd=**`r slackers %>% pull(activity) %>% sd(na.rm=TRUE)`**)
+  - **`r slackers %>% filter(lone == "early") %>% nrow()`** only contributed in the first 2 weeks of the semester
+  - **`r slackers %>% filter(lone == "late") %>% nrow()`** only contributed in the final 2 weeks of the semester
+  - **`r slackers %>% filter(lone == "mid") %>% nrow()`** only contributed in the middle 9 weeks of the semester
+  
+```{r slackers by team}
+slackers_by_team <- slackers %>% 
+                    select(Repository,lone) %>%
+                    group_by(Repository) %>%
+                    pivot_wider(names_from = lone, values_from = lone, values_fn = length)
+slacker_outcomes <- merge(x=team_outcomes,y=slackers_by_team, by = "Repository", all.x=TRUE) %>%
+                    replace(is.na(.), 0) %>%
+                    merge(y=github_by_team, by = "Repository", all = TRUE)
 
-# View the summary of the model
-summary(model_conflict_ordinal)
+activities_by_week_plot <- github_by_individual %>% 
+                           select(`1`:`13`) %>%
+                           pivot_longer(cols = `1`:`13`, names_to = "Week", values_to = "GitHub Activities") %>%
+                           ggplot(
+                             aes( x=factor(Week,
+                                 levels=c("1","2","3","4","5","6","7","8","9","10","11","12","13")),
+                                 y=`GitHub Activities`)) +
+                             geom_boxplot(outliers=FALSE) +
+                             stat_summary(fun=mean, geom="point") +
+                             labs(x="Week of Project",y="Activities per Person") +
+                             theme_minimal()
+activities_by_week_plot
 ```
