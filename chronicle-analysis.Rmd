@@ -135,7 +135,8 @@ github_by_individual <- github %>% select(Repository,Author,week) %>%
                         replace(is.na(.), 0) %>%
                         select(Repository,Author,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`,`13`) %>% 
                         mutate(activity=`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`) %>%
-                        mutate(consistency = (as.integer(`1`>0)+as.integer(`2`>0)+as.integer(`3`>0)+as.integer(`4`>0)+as.integer(`5`>0)+as.integer(`6`>0)+as.integer(`7`>0)+as.integer(`8`>0)+as.integer(`9`>0)+as.integer(`10`>0)+as.integer(`11`>0)+as.integer(`12`>0)+as.integer(`13`>0))/13)
+                        mutate(consistency = (as.integer(`1`>0)+as.integer(`2`>0)+as.integer(`3`>0)+as.integer(`4`>0)+as.integer(`5`>0)+as.integer(`6`>0)+as.integer(`7`>0)+as.integer(`8`>0)+as.integer(`9`>0)+as.integer(`10`>0)+as.integer(`11`>0)+as.integer(`12`>0)+as.integer(`13`>0))/13) %>%
+                        filter(activity > 0)
 
 individual_summary <- github_by_individual %>% select(Repository,Author,activity,consistency)
 
@@ -149,7 +150,9 @@ team_gini <- individual_summary %>%
     group_by(Repository) %>%
     summarize(
         Gini_Artifacts = Gini(activity),
-        Gini_Consistency = Gini(consistency)
+        Gini_Consistency = Gini(consistency),
+        Median_Artifacts = median(activity),
+        Median_Consistency = median(consistency)
     )
 
 ```
@@ -158,6 +161,22 @@ To determine the (in)equality within each team, we use [`Gini` from `DescTools`]
 
   * Team Gini for total number of artifacts (M = `r team_gini %>% pull(Gini_Artifacts) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Artifacts) %>% sd(na.rm = TRUE)`)
   * Team Gini for consistency (M = `r team_gini %>% pull(Gini_Consistency) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Consistency) %>% sd(na.rm = TRUE)`)
+  
+```{r visualize parity}
+gini <- team_gini %>% 
+             select("Repository","Gini_Artifacts","Gini_Consistency") %>%
+             pivot_longer(cols = `Gini_Artifacts`:`Gini_Consistency`, names_to = "Measurement", values_to = "Gini Index")
+gini_plot <- gini %>% 
+             ggplot(aes(`Gini Index`,`Measurement`)) +
+               geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+               geom_jitter(height = 0.1, width = 0) +
+               scale_x_continuous(breaks=seq(0,1,0.1)) +
+               scale_y_discrete(
+                 labels=c("Gini_Artifacts" = "Artifacts", "Gini_Consistency" = "Consistency"),
+                 name = "") +
+               theme_minimal()
+gini_plot
+```
   
 ```{r combine}
 team_gini$Repository <- trimws(team_gini$Repository)
@@ -240,4 +259,23 @@ activities_by_week_plot <- github_by_individual %>%
                              labs(x="Week of Project",y="Activities per Person") +
                              theme_minimal()
 activities_by_week_plot
+```
+
+Are there students who have respectable activity counts, but poor consistency? Let's look.
+
+```{r frequency vs consistency}
+github_by_individual$frequency <- github_by_individual$activity/13
+ggplot(data=github_by_individual, aes(x=consistency, y=frequency, )) + geom_jitter(alpha=0.33, width = 0.02) + theme_minimal() + scale_size(range = c(1, 10)) 
+```
+
+While there is a likely correlation between the two, there is evidence of some students who do not contribute consistently but may make as "frequent" contributions as their counterparts who contribute on a consistent basis.
+
+```{r what predicts cohesion?}
+summary(lm(data=team_outcomes, Cohesiveness~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
+summary(lm(data=team_outcomes, Cohesiveness~Median_Consistency))
+```
+
+```{r what predicts conflict?}
+summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
+summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency))
 ```
