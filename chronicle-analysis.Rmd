@@ -144,6 +144,8 @@ individual_summary <- github_by_individual %>% select(Repository,Author,activity
 
   * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"** (M = `r individual_summary %>% pull(consistency) %>% mean(na.rm=TRUE)`, sd = `r individual_summary %>% pull(consistency) %>% sd(na.rm=TRUE)`)
   * the total number of activities per individual (M = `r individual_summary %>% pull(activity) %>% mean(na.rm=TRUE)`, sd = `r individual_summary %>% pull(activity) %>% sd(na.rm=TRUE)`)
+  
+Let's look at the median team statistics for artifacts and consistency as well as the parity (using the Gini index).
 
 ```{r individuals_artifacts}
 team_gini <- individual_summary %>%
@@ -174,7 +176,12 @@ gini_plot <- gini %>%
                scale_y_discrete(
                  labels=c("Gini_Artifacts" = "Artifacts", "Gini_Consistency" = "Consistency"),
                  name = "") +
-               theme_minimal()
+               theme_minimal() +
+               theme(
+                 axis.text = element_text(size = 12),
+                 axis.title.x = element_text(size = 12),
+                 aspect.ratio=0.6)
+ggplot2::ggsave("gini_distribution.pdf")
 gini_plot
 ```
   
@@ -183,9 +190,6 @@ team_gini$Repository <- trimws(team_gini$Repository)
 aggregate_scores$`Your Team` <- trimws(aggregate_scores$`Your Team`)
 team_outcomes <- merge(x=team_gini,y=aggregate_scores, by.x = "Repository", by.y = "Your Team", all=TRUE)
 ```
-
-
-
 
 Investigate correlations:
 
@@ -203,23 +207,34 @@ What is the correlation between:
   * Team Gini for consistency *vs* Team conflict (rho=`r consistency_v_conflict$estimate`, p=`r consistency_v_conflict$p.value`)
   * Team Gini for consistency *vs* Team cohesiveness (rho=`r consistency_v_cohesiveness$estimate`, p=`r consistency_v_cohesiveness$p.value`)
 
-```{r linear models}
-model_conflict <- lm(team_outcomes$Conflict ~ team_outcomes$Gini_Artifacts + team_outcomes$Gini_Consistency)
-model_cohesiveness <- lm(team_outcomes$Cohesiveness ~ team_outcomes$Gini_Artifacts + team_outcomes$Gini_Consistency)
+Are there students who have respectable activity counts, but poor consistency? Let's look.
+
+```{r frequency vs consistency}
+github_by_individual$frequency <- github_by_individual$activity/13
+frequency_plot <- ggplot(data=github_by_individual, aes(x=consistency, y=frequency, )) + 
+  geom_jitter(alpha=0.33, width = 0.01, height = 0.5) + 
+  theme_minimal() +
+  xlab("Consistency") + ylab("Frequency") +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 13),
+    panel.grid.major.x = element_blank(),
+    aspect.ratio=0.6)
+ggplot2::ggsave("consistency_vs_frequency.pdf")
+frequency_plot
 ```
 
-Which is a better predictor of conflict (multiple linear regression: conflict~gini_artifacts + gini_consistency)? 
+While there is a likely correlation between the two, there is evidence of some students who do not contribute consistently but may make as "frequent" contributions as their counterparts who contribute on a consistent basis.
 
-```{r}
-summary(model_conflict)
+```{r what predicts cohesion?}
+summary(lm(data=team_outcomes, Cohesiveness~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
+summary(lm(data=team_outcomes, Cohesiveness~Median_Consistency)) # eliminates factors with high p-values
 ```
 
-Which is a better predictor of cohesiveness (multiple linear regression: conflict~gini_artifacts + gini_consistency)? 
-
-```{r}
-summary(model_cohesiveness)
+```{r what predicts conflict?}
+summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
+summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency)) # eliminates factors with high p-values
 ```
-
 
 Post-hoc analysis of slackers:
 
@@ -256,26 +271,10 @@ activities_by_week_plot <- github_by_individual %>%
                                  y=`GitHub Activities`)) +
                              geom_boxplot(outliers=FALSE) +
                              stat_summary(fun=mean, geom="point") +
-                             labs(x="Week of Project",y="Activities per Person") +
-                             theme_minimal()
+                             labs(x="Week of Project",y="Artifacts per Person") +
+                             theme_minimal() +
+                             theme(aspect.ratio=0.6)
+ggplot2::ggsave("artifacts_vs_week.pdf")
 activities_by_week_plot
 ```
 
-Are there students who have respectable activity counts, but poor consistency? Let's look.
-
-```{r frequency vs consistency}
-github_by_individual$frequency <- github_by_individual$activity/13
-ggplot(data=github_by_individual, aes(x=consistency, y=frequency, )) + geom_jitter(alpha=0.33, width = 0.02) + theme_minimal() + scale_size(range = c(1, 10)) 
-```
-
-While there is a likely correlation between the two, there is evidence of some students who do not contribute consistently but may make as "frequent" contributions as their counterparts who contribute on a consistent basis.
-
-```{r what predicts cohesion?}
-summary(lm(data=team_outcomes, Cohesiveness~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
-summary(lm(data=team_outcomes, Cohesiveness~Median_Consistency))
-```
-
-```{r what predicts conflict?}
-summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
-summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency))
-```
