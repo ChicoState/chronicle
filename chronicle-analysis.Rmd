@@ -45,7 +45,9 @@ At a glance, here are some descriptive statistics of our data:
 Summarize team trends:
 ```{r team trends}
 github_by_team <- github %>% select(Repository,Action) %>% pivot_wider(names_from = Action, values_from = Action, values_fn = length)
-github_by_team <- github_by_team %>% mutate(total = commit+pull_request+issue+comment+code_review)
+github_by_team <- github_by_team %>% 
+                  replace(is.na(.), 0) %>% 
+                  mutate(total = commit+pull_request+issue+comment+code_review)
 ```
   * Trends, per team:
     * Commits (M = **`r github_by_team %>% pull(commit) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(commit) %>% sd(na.rm=TRUE)`**)
@@ -55,8 +57,7 @@ github_by_team <- github_by_team %>% mutate(total = commit+pull_request+issue+co
     * Code Reviews (M = **`r github_by_team %>% pull(code_review) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(code_review) %>% sd(na.rm=TRUE)`**)
     * Total artifacts (M = **`r github_by_team %>% pull(total) %>% mean(na.rm=TRUE)`**, sd = **`r github_by_team %>% pull(total) %>% sd(na.rm=TRUE)`**)
     
-For each team, we need to calculate their aggregate score for **Conflict** and **Cohesiveness**, by finding the median score of the answers
-of all of the members of the team (who responded).
+For each team, we need to calculate their aggregate score for **Conflict** and **Cohesiveness**, by finding the mean score of the answers of all of the members of the team (who responded).
 
   * **Conflict**. Conflict questions include:
     * `How frequently do you have disagreements within your work group about the task of the project you are working on?`
@@ -80,39 +81,200 @@ of all of the members of the team (who responded).
     * `Being part of the team allows team members to do enjoyable work`
 
 ```{r calc_team_survey_scores}
+survey <- survey %>% 
+  mutate(
+    Inverted_Unhappy = 6 - `I'm unhappy with my team's level of commitment to the task`
+  )
+conflict_columns <- c(
+  "How frequently do you have disagreements within your work group about the task of the project you are working on?",
+  "How often do people in your work group have conflicting opinions about the project you are working on?",
+  "How much emotional conflict is there in your work group?",
+  "How often do people get angry while working in your group?",
+  "How much conflict of ideas is there in your work group?",
+  "How often do you disagree about resource allocation in your work group?",
+  "How much relationship tension is there in your work group?",
+  "How often are there disagreements about who should do what in your work group?",
+  "How much conflict is there in your group about task responsibilities?"
+)
+
+cohesiveness_columns <- c(
+  "Team members get to participate in enjoyable activities",
+  "Team members enjoy spending time together",
+  "Team members get along well",
+  "Inverted_Unhappy",
+  "Our team is united in trying to reach its goals for performance",
+  "Our team members have conflicting aspirations for the team's performance",
+  "Team members like each other",
+  "Team members like the work that the group does",
+  "Being part of the team allows team members to do enjoyable work"
+)
+
+
+
+aggregate_scores <- survey %>%
+  group_by(`Your Team`) %>%  
+  summarize(
+    Conflict = mean(as.numeric(unlist(across(all_of(conflict_columns)))), na.rm = TRUE),
+    Cohesiveness = mean(as.numeric(unlist(across(all_of(cohesiveness_columns)))), na.rm = TRUE)
+  )
 
 ```
 
 
 Then, we want to look at the descriptive statistics for these team conflict and cohesiveness scores:
 
-  * Team conflict (M = `r `, sd = `r `)
-  * Team cohesiveness (M = `r `, sd = `r `)
+  * Team conflict (M = `r mean(aggregate_scores %>% pull(Conflict), na.rm = TRUE) %>% round(2)`, sd = `r sd(aggregate_scores %>% pull(Conflict), na.rm = TRUE) %>% round(2)`)
+  * Team cohesiveness (M = `r mean(aggregate_scores %>% pull(Cohesiveness), na.rm = TRUE) %>% round(2)`, sd = `r sd(aggregate_scores %>% pull(Cohesiveness), na.rm = TRUE) %>% round(2)`)
   
 Next, we want to determine statistics about individuals:
-  * the number of artifacts by each person in the GitHub data (M = `r `, sd = `r `)
-  * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"**
+
+```{r by individual}
+# For each individual, how many artifacts did they contribute per week:
+github_by_individual <- github %>% select(Repository,Author,week) %>%
+                        pivot_wider(names_from = week, values_from = week, values_fn = length) %>%
+                        replace(is.na(.), 0) %>%
+                        select(Repository,Author,`1`,`2`,`3`,`4`,`5`,`6`,`7`,`8`,`9`,`10`,`11`,`12`,`13`) %>% 
+                        mutate(activity=`1`+`2`+`3`+`4`+`5`+`6`+`7`+`8`+`9`+`10`+`11`+`12`+`13`) %>%
+                        mutate(consistency = (as.integer(`1`>0)+as.integer(`2`>0)+as.integer(`3`>0)+as.integer(`4`>0)+as.integer(`5`>0)+as.integer(`6`>0)+as.integer(`7`>0)+as.integer(`8`>0)+as.integer(`9`>0)+as.integer(`10`>0)+as.integer(`11`>0)+as.integer(`12`>0)+as.integer(`13`>0))/13) %>%
+                        filter(activity > 0)
+
+individual_summary <- github_by_individual %>% select(Repository,Author,activity,consistency)
+
+```
+
+  * the ratio of *number of weeks an individual has an artifact* to the *total number of weeks their team had any activity during the semester* (from 0.0 to 1.0), from here on out referred to as **"consistency"** (M = `r individual_summary %>% pull(consistency) %>% mean(na.rm=TRUE)`, sd = `r individual_summary %>% pull(consistency) %>% sd(na.rm=TRUE)`)
+  * the total number of activities per individual (M = `r individual_summary %>% pull(activity) %>% mean(na.rm=TRUE)`, sd = `r individual_summary %>% pull(activity) %>% sd(na.rm=TRUE)`)
+  
+Let's look at the median team statistics for artifacts and consistency as well as the parity (using the Gini index).
 
 ```{r individuals_artifacts}
+team_gini <- individual_summary %>%
+    group_by(Repository) %>%
+    summarize(
+        Gini_Artifacts = Gini(activity),
+        Gini_Consistency = Gini(consistency),
+        Median_Artifacts = median(activity),
+        Median_Consistency = median(consistency)
+    )
 
 ```
 
 To determine the (in)equality within each team, we use [`Gini` from `DescTools`](https://search.r-project.org/CRAN/refmans/DescTools/html/Gini.html) to calculate the [Gini coefficient](https://en.wikipedia.org/wiki/Gini_coefficient). Low values (approaching 0) indicate equality while high values (approaching 1) represent inequality.
 
-  * Team Gini for total number of artifacts (M = `r `, sd = `r `)
-  * Team Gini for consistency (M = `r `, sd = `r `)
+  * Team Gini for total number of artifacts (M = `r team_gini %>% pull(Gini_Artifacts) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Artifacts) %>% sd(na.rm = TRUE)`)
+  * Team Gini for consistency (M = `r team_gini %>% pull(Gini_Consistency) %>% mean(na.rm = TRUE)`, sd = `r team_gini %>% pull(Gini_Consistency) %>% sd(na.rm = TRUE)`)
   
-```{r gini}
+```{r visualize parity}
+gini <- team_gini %>% 
+             select("Repository","Gini_Artifacts","Gini_Consistency") %>%
+             pivot_longer(cols = `Gini_Artifacts`:`Gini_Consistency`, names_to = "Measurement", values_to = "Gini Index")
+gini_plot <- gini %>% 
+             ggplot(aes(`Gini Index`,`Measurement`)) +
+               geom_violin(draw_quantiles = c(0.25, 0.5, 0.75)) +
+               geom_jitter(height = 0.1, width = 0) +
+               scale_x_continuous(breaks=seq(0,1,0.1)) +
+               scale_y_discrete(
+                 labels=c("Gini_Artifacts" = "Artifacts", "Gini_Consistency" = "Consistency"),
+                 name = "") +
+               theme_minimal() +
+               theme(
+                 axis.text = element_text(size = 12),
+                 axis.title.x = element_text(size = 12),
+                 aspect.ratio=0.6)
+ggplot2::ggsave("gini_distribution.pdf")
+gini_plot
+```
+  
+```{r combine}
+team_gini$Repository <- trimws(team_gini$Repository)
+aggregate_scores$`Your Team` <- trimws(aggregate_scores$`Your Team`)
+team_outcomes <- merge(x=team_gini,y=aggregate_scores, by.x = "Repository", by.y = "Your Team", all=TRUE)
+```
 
+Investigate correlations:
+
+```{r correlations}
+quantity_v_conflict <- cor.test(team_outcomes$Gini_Artifacts,team_outcomes$Conflict, method = "spearman")
+quantity_v_cohesiveness <- cor.test(team_outcomes$Gini_Artifacts,team_outcomes$Cohesiveness, method = "spearman")
+consistency_v_conflict <- cor.test(team_outcomes$Gini_Consistency,team_outcomes$Conflict, method = "spearman")
+consistency_v_cohesiveness <- cor.test(team_outcomes$Gini_Consistency,team_outcomes$Cohesiveness, method = "spearman")
 ```
 
 What is the correlation between:
 
-  * Team Gini for total number of artifacts *vs* Team conflict (rho and p-value): `r `
-  * Team Gini for total number of artifacts *vs* Team cohesiveness (rho and p-value): `r `
-  * Team Gini for consistency *vs* Team conflict (rho and p-value): `r `
-  * Team Gini for consistency *vs* Team cohesiveness (rho and p-value): `r `
-  
-Which is a better predictor of conflict (multiple linear regression: conflict~gini_artifacts + gini_consistency)? `r `
+  * Team Gini for total number of artifacts *vs* Team conflict (rho=`r quantity_v_conflict$estimate`, p=`r quantity_v_conflict$p.value`)
+  * Team Gini for total number of artifacts *vs* Team cohesiveness (rho=`r quantity_v_cohesiveness$estimate`, p=`r quantity_v_cohesiveness$p.value`)
+  * Team Gini for consistency *vs* Team conflict (rho=`r consistency_v_conflict$estimate`, p=`r consistency_v_conflict$p.value`)
+  * Team Gini for consistency *vs* Team cohesiveness (rho=`r consistency_v_cohesiveness$estimate`, p=`r consistency_v_cohesiveness$p.value`)
 
-Which is a better predictor of cohesiveness (multiple linear regression: conflict~gini_artifacts + gini_consistency)? `r `
+Are there students who have respectable activity counts, but poor consistency? Let's look.
+
+```{r frequency vs consistency}
+github_by_individual$frequency <- github_by_individual$activity/13
+frequency_plot <- ggplot(data=github_by_individual, aes(x=consistency, y=frequency, )) + 
+  geom_jitter(alpha=0.33, width = 0.01, height = 0.5) + 
+  theme_minimal() +
+  xlab("Consistency") + ylab("Frequency") +
+  theme(
+    axis.text = element_text(size = 12),
+    axis.title = element_text(size = 13),
+    panel.grid.major.x = element_blank(),
+    aspect.ratio=0.6)
+ggplot2::ggsave("consistency_vs_frequency.pdf")
+frequency_plot
+```
+
+While there is a likely correlation between the two, there is evidence of some students who do not contribute consistently but may make as "frequent" contributions as their counterparts who contribute on a consistent basis.
+
+```{r what predicts cohesion?}
+summary(lm(data=team_outcomes, Cohesiveness~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
+summary(lm(data=team_outcomes, Cohesiveness~Median_Consistency)) # eliminates factors with high p-values
+```
+
+```{r what predicts conflict?}
+summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency+Gini_Artifacts+Gini_Consistency))
+summary(lm(data=team_outcomes, Conflict~Median_Artifacts+Median_Consistency)) # eliminates factors with high p-values
+```
+
+Post-hoc analysis of slackers:
+
+```{r slackers}
+slackers <- github_by_individual
+slackers <- slackers %>% filter(consistency == (1/13)) %>% mutate(lone="mid")
+slackers$lone[slackers$`1` | slackers$`2`] <- "early"
+slackers$lone[slackers$`12` | slackers$`13`] <- "late"
+```
+
+There were **`r slackers %>% nrow()`** individuals who only showed github activities during one week of the semester. 
+
+  - They belonged to **`r slackers %>% select(Repository) %>% unique() %>% nrow()`** teams
+  - Their activities were relatively low during that week (M=**`r slackers %>% pull(activity) %>% mean(na.rm=TRUE)`**, sd=**`r slackers %>% pull(activity) %>% sd(na.rm=TRUE)`**)
+  - **`r slackers %>% filter(lone == "early") %>% nrow()`** only contributed in the first 2 weeks of the semester
+  - **`r slackers %>% filter(lone == "late") %>% nrow()`** only contributed in the final 2 weeks of the semester
+  - **`r slackers %>% filter(lone == "mid") %>% nrow()`** only contributed in the middle 9 weeks of the semester
+  
+```{r slackers by team}
+slackers_by_team <- slackers %>% 
+                    select(Repository,lone) %>%
+                    group_by(Repository) %>%
+                    pivot_wider(names_from = lone, values_from = lone, values_fn = length)
+slacker_outcomes <- merge(x=team_outcomes,y=slackers_by_team, by = "Repository", all.x=TRUE) %>%
+                    replace(is.na(.), 0) %>%
+                    merge(y=github_by_team, by = "Repository", all = TRUE)
+
+activities_by_week_plot <- github_by_individual %>% 
+                           select(`1`:`13`) %>%
+                           pivot_longer(cols = `1`:`13`, names_to = "Week", values_to = "GitHub Activities") %>%
+                           ggplot(
+                             aes( x=factor(Week,
+                                 levels=c("1","2","3","4","5","6","7","8","9","10","11","12","13")),
+                                 y=`GitHub Activities`)) +
+                             geom_boxplot(outliers=FALSE) +
+                             stat_summary(fun=mean, geom="point") +
+                             labs(x="Week of Project",y="Artifacts per Person") +
+                             theme_minimal() +
+                             theme(aspect.ratio=0.6)
+ggplot2::ggsave("artifacts_vs_week.pdf")
+activities_by_week_plot
+```
+
